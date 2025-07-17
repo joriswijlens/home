@@ -8,6 +8,17 @@ Main goals:
 
 In the diagram you can see my setup
 
+## Approach
+
+### At first
+- Start with a production environment only
+- Deploy from my own laptop
+    
+### Later
+- Introduce VPN to access the home network from outside
+- Introduce a test environment
+- Deploy from a CI/CD pipeline with GitHub Actions
+
 ![Architecture](./home.png)
 
 # Test bench
