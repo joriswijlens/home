@@ -1,0 +1,80 @@
+---
+- name: Ensure base target directory exists
+  ansible.builtin.file:
+    path: /opt/smartworkx
+    state: directory
+    mode: '0755'
+
+- name: Ensure home-assistant config directory exists on remote
+  ansible.builtin.file:
+    path: /opt/smartworkx/home-assistant/config
+    state: directory
+    mode: '0755'
+
+- name: Ensure mosquitto config directory exists on remote
+  ansible.builtin.file:
+    path: /opt/smartworkx/mosquitto/config
+    state: directory
+    mode: '0755'
+
+- name: Ensure mosquitto data directory exists on remote
+  ansible.builtin.file:
+    path: /opt/smartworkx/mosquitto/data
+    state: directory
+    mode: '0755'
+
+- name: Ensure mosquitto log directory exists on remote
+  ansible.builtin.file:
+    path: /opt/smartworkx/mosquitto/log
+    state: directory
+    mode: '0755'
+
+- name: Ensure zigbee2mqtt data directory exists on remote
+  ansible.builtin.file:
+    path: /opt/smartworkx/zigbee2mqtt/data
+    state: directory
+    mode: '0755'
+
+- name: Copy zigbee2mqtt configuration.yaml to remote host
+  ansible.builtin.copy:
+    src: "{{ project_root }}/apps/zigbee2mqtt/data/configuration.yaml"
+    dest: /opt/smartworkx/zigbee2mqtt/data/configuration.yaml
+    mode: '0644'
+
+- name: Copy mosquitto.conf to remote host
+  ansible.builtin.copy:
+    src: "{{ project_root }}/apps/mosquitto/config/mosquitto.conf"
+    dest: /opt/smartworkx/mosquitto/config/mosquitto.conf
+    mode: '0644'
+
+- name: Copy docker-compose file to remote host
+  ansible.builtin.copy:
+    src: "{{ project_root }}/infrastructure/mars/docker-compose.yml"
+    dest: /opt/smartworkx/docker-compose.yml
+    mode: '0644'
+
+- name: Stop and remove existing smartworkx stack
+  community.docker.docker_compose:
+    project_src: /opt/smartworkx
+    files:
+      - docker-compose.yml
+    state: absent
+  ignore_errors: true # Ignore if stack doesn't exist yet
+
+- name: Create smartworkx network
+  community.docker.docker_network:
+    name: smartworkx
+
+- name: Deploy smartworkx stack (create containers)
+  community.docker.docker_compose:
+    project_src: /opt/smartworkx
+    files:
+      - docker-compose.yml
+    state: present
+
+- name: Start smartworkx stack
+  community.docker.docker_compose:
+    project_src: /opt/smartworkx
+    files:
+      - docker-compose.yml
+    state: present

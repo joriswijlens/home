@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  home-assistant:
+    container_name: home-assistant
+    image: "ghcr.io/home-assistant/home-assistant:stable"
+    volumes:
+      - ./home-assistant/config:/config
+      - /etc/localtime:/etc/localtime:ro
+    restart: unless-stopped
+    depends_on:
+      - mosquitto
+    networks:
+      - smartworkx
+    ports:
+      - "8123:8123"
+
+  mosquitto:
+    container_name: mosquitto
+    image: eclipse-mosquitto
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    networks:
+      - smartworkx
+
+  zigbee2mqtt:
+    container_name: zigbee2mqtt
+    image: koenkk/zigbee2mqtt
+    volumes:
+      - ./zigbee2mqtt/data:/app/data
+    restart: unless-stopped
+    depends_on:
+      - mosquitto
+    environment:
+      - TZ=Europe/Amsterdam
+    networks:
+      - smartworkx
+
+networks:
+  smartworkx:
+    name: smartworkx

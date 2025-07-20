@@ -3,5 +3,8 @@
   become: true
   become_method: sudo
   become_user: root
+  vars:
+    project_root: /home/joris/workspaces/smartworkx/home
   roles:
     - docker
+    - stack
