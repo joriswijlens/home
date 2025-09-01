@@ -1,11 +1,13 @@
 # Initial Architecture
 
 ## Context
-We are building a home automation system with Home Assistant and Raspberry Pi. We want it to be maintainable, cost effective, reliable, and support smart devices easily.
+We are building a home automation system with Home Assistant. 
+We want it to be maintainable, cost effective, reliable, and support smart devices easily.
 
 ## Decision
-We will use Home Assistant installed on a Raspberry Pi with Docker. Home Assistant will act as the central controller.
+We will use Zigbee for our smart devices. Zigbee is a low-power, wireless mesh network standard that is widely supported by many smart home devices. 
+We will use a Zigbee coordinator (like a USB dongle) connected to our Home Assistant server to manage the Zigbee network.
 
 ## Consequences
-- We benefit from a large community and lots of integrations.
-- We rely on the stability of the Raspberry Pi and Home Assistant updates.
+- Wide availability of Zigbee devices.
+- Using a mesh network for better coverage.

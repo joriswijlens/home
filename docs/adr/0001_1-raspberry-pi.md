@@ -5,8 +5,9 @@ We are building a home automation system with Home Assistant and Raspberry Pi.
 We want it to be maintainable, cost effective, reliable, and support smart devices easily.
 
 ## Decision
-We will use an SSD for storage on our Raspberry Pi running Home Assistant with Docker. 
+We will use Home Assistant installed on a Raspberry Pi with Docker.
 
 ## Consequences
-- More reliable and faster storage compared to SD cards.
-- Increased cost and complexity.
+- We benefit from a large community and lots of integrations.
+- We rely on the stability of the Raspberry Pi and Home Assistant updates.
+- Inside our home

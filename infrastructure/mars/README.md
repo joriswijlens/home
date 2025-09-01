@@ -20,14 +20,15 @@ https://www.raspberrypi.com/documentation/computers/getting-started.html#raspber
 - Use the rpi-imager to install ubuntu server LTS on the SSD
 - Remove the SD card and boot the Raspberry Pi
 - Ubuntu server will boot from the SSD
-- Connect with <username>@home-assistant.local or <username>@<ip-address> via SSH
+- Name the rpi `mars` and set a user (e.g., `joris`)
+- Connect with <username>@mars.local or <username>@<ip-address> via SSH
 - If you are using a Mac, you can use the terminal to connect via SSH:
-  - `ssh joris@home-assistant.local`
+  - `ssh joris@mars.local`
 - You can disconnect the monitor, mouse, and keyboard now, as everything can be done via SSH.
 - Get your SSH key and add it to the authorized keys on the Raspberry Pi
-  - `ssh-copy-id joris@home-assistant.local`
+  - `ssh-copy-id joris@mars.local`
 - Prepare the rpi for Ansible
-  - Log in to rpi `ssh joris@home-assistant.local`
+  - Log in to rpi `ssh joris@mars.local`
   - `sudo useradd -m ansibleuser`
   - `sudo usermod -aG sudo ansibleuser`
   - `sudo mkdir /home/ansibleuser/.ssh`
@@ -36,16 +37,25 @@ https://www.raspberrypi.com/documentation/computers/getting-started.html#raspber
   - `sudo chmod 600 /home/ansibleuser/.ssh/authorized_keys`
   - `sudo chown -R ansibleuser:ansibleuser /home/ansibleuser/.ssh`
   - exit the SSH session
-  - `ssh ansibleuser@home-assistant.loca`
+  - `ssh ansibleuser@hmars.local`
   - You can now log in as `ansibleuser` via SSH without a password.
   - exit the SSH session
 
 - Use Ansible to set up the Raspberry Pi server (install Docker, etc.):
-  - Navigate to the `infrastructure/mars/ansible/` directory:
+  - Navigate to the ansible directory:
     ```bash
-    cd ../../../infrastructure/mars/ansible/
+    cd ./ansible/
     ```
-  - Run the playbook:
+  - Run the setup host playbook "once":
     ```bash
-    ansible-playbook -i inventory.ini playbook.yml
+    ansible-playbook -i inventory.ini setup-ha-host-playbook.yml
     ```
+  - Run the deploy ha container playbook for changes or updates on the containers:
+    ```bash
+    ansible-playbook -i inventory.ini deploy-ha-container-playbook.yml
+    ```
+    
+Removed modem manager:
+```bash
+sudo systemctl disable ModemManager
+```

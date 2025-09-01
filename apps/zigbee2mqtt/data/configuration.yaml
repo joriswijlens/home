@@ -1,9 +1,12 @@
 homeassistant: true
-permit_join: false
+permit_join: true
 mqtt:
   base_topic: zigbee2mqtt
-  server: 'mqtt://mosquitto:1883'
+  server: 'mqtt://localhost:1883'
 serial:
-  port: /dev/ttyACM0 # This might need to be adjusted for your SMLIGHT SLZB-06
+  port: /dev/ttyUSB0
+  adapter: zstack
+  baudrate: 115200
+  rtscts: false             # important for SLZB-06 (hardware flow control)
 frontend:
   port: 8080

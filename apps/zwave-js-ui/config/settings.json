@@ -1,0 +1,116 @@
+{
+  "mqtt": {
+    "name": "zwavejs-ui",
+    "host": "mqtt://127.0.0.1",
+    "port": 1883,
+    "qos": 1,
+    "prefix": "zwave",
+    "reconnectPeriod": 3000,
+    "retain": true,
+    "clean": true,
+    "auth": false,
+    "enabled": true,
+    "_ca": "",
+    "ca": "",
+    "_cert": "",
+    "cert": "",
+    "_key": "",
+    "key": ""
+  },
+  "gateway": {
+    "type": 1,
+    "plugins": [],
+    "authEnabled": false,
+    "payloadType": 1,
+    "nodeNames": true,
+    "hassDiscovery": true,
+    "discoveryPrefix": "homeassistant",
+    "logEnabled": false,
+    "logLevel": "debug",
+    "logToFile": false,
+    "values": [],
+    "jobs": [],
+    "disableChangelog": false,
+    "notifyNewVersions": false,
+    "topic": 2,
+    "sendEvents": true,
+    "includeNodeInfo": true,
+    "ignoreStatusUpdates": false,
+    "publishNodeDetails": true,
+    "homeAssistant": {
+      "discovery": true,
+      "discoveryPrefix": "homeassistant",
+      "retainDiscovery": true
+    },
+    "versions": {
+      "app": "11.2.1",
+      "driver": "15.12.0",
+      "server": "3.2.1"
+    },
+    "retainedDiscovery": true
+  },
+  "zwave": {
+    "enabled": true,
+    "port": "/dev/zwave",
+    "allowBootloaderOnly": false,
+    "commandsTimeout": 30,
+    "logLevel": "info",
+    "rf": {
+      "maxLongRangePowerlevel": "auto",
+      "autoPowerlevels": true,
+      "txPower": {
+        "powerlevel": "auto"
+      }
+    },
+    "securityKeys": {},
+    "securityKeysLongRange": {},
+    "deviceConfigPriorityDir": "/usr/src/app/store",
+    "logEnabled": true,
+    "logToFile": true,
+    "maxFiles": 7,
+    "serverEnabled": false,
+    "serverServiceDiscoveryDisabled": false,
+    "enableSoftReset": true,
+    "disableOptimisticValueUpdate": false,
+    "enableStatistics": true,
+    "serverPort": 3000,
+    "maxNodeEventsQueueSize": 100,
+    "higherReportsTimeout": false,
+    "disableControllerRecovery": false,
+    "disableWatchdog": false,
+    "disclaimerVersion": 1
+  },
+  "backup": {
+    "storeBackup": false,
+    "storeCron": "0 0 * * *",
+    "storeKeep": 7,
+    "nvmBackup": false,
+    "nvmBackupOnEvent": false,
+    "nvmCron": "0 0 * * *",
+    "nvmKeep": 7
+  },
+  "zniffer": {
+    "enabled": false,
+    "port": "",
+    "logEnabled": true,
+    "logToFile": true,
+    "maxFiles": 7,
+    "securityKeys": {
+      "S2_Unauthenticated": "",
+      "S2_Authenticated": "",
+      "S2_AccessControl": "",
+      "S0_Legacy": ""
+    },
+    "securityKeysLongRange": {
+      "S2_Authenticated": "",
+      "S2_AccessControl": ""
+    },
+    "convertRSSI": false
+  },
+  "ui": {
+    "colorScheme": "system",
+    "navTabs": false,
+    "compactMode": true,
+    "streamerMode": false
+  }
+}

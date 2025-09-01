@@ -1,50 +1,71 @@
-<mxfile host="Electron" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/28.0.4 Chrome/138.0.7204.97 Electron/37.2.1 Safari/537.36" version="28.0.4">
+<mxfile host="Electron" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/28.1.2 Chrome/138.0.7204.243 Electron/37.4.0 Safari/537.36" version="28.1.2">
   <diagram name="Page-1" id="KA6_9vbulpVYuA_6DBJX">
-    <mxGraphModel dx="1826" dy="723" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="1226" dy="1235" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="rT-O0KYkfanfOYnkgA-m-2" value="rpi 1 - v&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;ersion 3b&lt;/span&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;" parent="1" vertex="1">
+        <mxCell id="rT-O0KYkfanfOYnkgA-m-2" value="rpi - v&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;ersion 3b&lt;/span&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;" parent="1" vertex="1">
           <mxGeometry x="187.5" y="170" width="230" height="190" as="geometry" />
         </mxCell>
-        <mxCell id="rT-O0KYkfanfOYnkgA-m-3" value="rpi 3 -&amp;nbsp;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;version 5&lt;/span&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;" parent="1" vertex="1">
-          <mxGeometry x="340" y="570" width="350" height="280" as="geometry" />
+        <mxCell id="rT-O0KYkfanfOYnkgA-m-3" value="rpi -&amp;nbsp;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;version 5&lt;/span&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;" parent="1" vertex="1">
+          <mxGeometry x="20" y="400" width="550" height="360" as="geometry" />
         </mxCell>
         <mxCell id="rT-O0KYkfanfOYnkgA-m-4" value="docker" style="rounded=0;whiteSpace=wrap;html=1;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;" parent="1" vertex="1">
-          <mxGeometry x="362.5" y="620" width="305" height="200" as="geometry" />
+          <mxGeometry x="40" y="420" width="510" height="310" as="geometry" />
+        </mxCell>
+        <mxCell id="pfNigHBNCp9uW7NKkb0O-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="rT-O0KYkfanfOYnkgA-m-5" target="rT-O0KYkfanfOYnkgA-m-6" edge="1">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="rT-O0KYkfanfOYnkgA-m-5" value="home assistant" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-          <mxGeometry x="380" y="640" width="120" height="60" as="geometry" />
+          <mxGeometry x="242.5" y="440" width="120" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="rT-O0KYkfanfOYnkgA-m-6" value="mosquitto" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-          <mxGeometry x="520" y="640" width="120" height="60" as="geometry" />
+        <mxCell id="pfNigHBNCp9uW7NKkb0O-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="rT-O0KYkfanfOYnkgA-m-6" target="rT-O0KYkfanfOYnkgA-m-7" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="pfNigHBNCp9uW7NKkb0O-7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="rT-O0KYkfanfOYnkgA-m-6" target="pfNigHBNCp9uW7NKkb0O-8" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="430" y="940" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rT-O0KYkfanfOYnkgA-m-6" value="Mosquitto" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="242.5" y="540" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="pfNigHBNCp9uW7NKkb0O-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="rT-O0KYkfanfOYnkgA-m-7" target="pfNigHBNCp9uW7NKkb0O-5" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="150" y="840" as="targetPoint" />
+          </mxGeometry>
         </mxCell>
         <mxCell id="rT-O0KYkfanfOYnkgA-m-7" value="Zigbee2MQTT" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-          <mxGeometry x="380" y="720" width="120" height="60" as="geometry" />
+          <mxGeometry x="90" y="640" width="120" height="60" as="geometry" />
         </mxCell>
         <mxCell id="rT-O0KYkfanfOYnkgA-m-8" value="docker" style="rounded=0;whiteSpace=wrap;html=1;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;" parent="1" vertex="1">
           <mxGeometry x="227.5" y="190" width="150" height="140" as="geometry" />
         </mxCell>
+        <mxCell id="pfNigHBNCp9uW7NKkb0O-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="rT-O0KYkfanfOYnkgA-m-9" target="rT-O0KYkfanfOYnkgA-m-5" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
         <mxCell id="rT-O0KYkfanfOYnkgA-m-9" value="vpn server" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="242.5" y="200" width="120" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="rT-O0KYkfanfOYnkgA-m-12" value="&lt;div&gt;laptop for test&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;" parent="1" vertex="1">
-          <mxGeometry x="-93" y="569" width="350" height="280" as="geometry" />
-        </mxCell>
-        <mxCell id="rT-O0KYkfanfOYnkgA-m-13" value="docker" style="rounded=0;whiteSpace=wrap;html=1;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top;" parent="1" vertex="1">
-          <mxGeometry x="-70.5" y="619" width="305" height="200" as="geometry" />
-        </mxCell>
-        <mxCell id="rT-O0KYkfanfOYnkgA-m-14" value="home assistant" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-          <mxGeometry x="-53" y="639" width="120" height="60" as="geometry" />
-        </mxCell>
-        <mxCell id="rT-O0KYkfanfOYnkgA-m-15" value="mosquitto" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-          <mxGeometry x="87" y="639" width="120" height="60" as="geometry" />
-        </mxCell>
-        <mxCell id="rT-O0KYkfanfOYnkgA-m-16" value="Zigbee2MQTT" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-          <mxGeometry x="-53" y="719" width="120" height="60" as="geometry" />
+        <mxCell id="pfNigHBNCp9uW7NKkb0O-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="rT-O0KYkfanfOYnkgA-m-19" target="rT-O0KYkfanfOYnkgA-m-9" edge="1">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="rT-O0KYkfanfOYnkgA-m-19" value="kpn box&lt;div&gt;modem/router&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="242.5" y="50" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="pfNigHBNCp9uW7NKkb0O-5" value="Zigbee device" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="90" y="810" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="pfNigHBNCp9uW7NKkb0O-9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="pfNigHBNCp9uW7NKkb0O-8" target="pfNigHBNCp9uW7NKkb0O-10" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="430" y="830" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="pfNigHBNCp9uW7NKkb0O-8" value="ZWave-JS-UI" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="377.5" y="640" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="pfNigHBNCp9uW7NKkb0O-10" value="ZWave device" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="377.5" y="810" width="120" height="60" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>

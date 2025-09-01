@@ -1,47 +1,59 @@
-version: '3.8'
-
 services:
   home-assistant:
     container_name: home-assistant
-    image: "ghcr.io/home-assistant/home-assistant:stable"
+    image: ghcr.io/home-assistant/home-assistant:stable
     volumes:
       - ./home-assistant/config:/config
       - /etc/localtime:/etc/localtime:ro
     restart: unless-stopped
     depends_on:
       - mosquitto
-    networks:
-      - smartworkx
-    ports:
-      - "8123:8123"
+    network_mode: host
 
   mosquitto:
     container_name: mosquitto
-    image: eclipse-mosquitto
+    image: eclipse-mosquitto:2
     volumes:
       - ./mosquitto/config:/mosquitto/config
       - ./mosquitto/data:/mosquitto/data
       - ./mosquitto/log:/mosquitto/log
     restart: unless-stopped
-    ports:
-      - "1883:1883"
-      - "9001:9001"
-    networks:
-      - smartworkx
+    network_mode: host
 
   zigbee2mqtt:
-    container_name: zigbee2mqtt
     image: koenkk/zigbee2mqtt
-    volumes:
-      - ./zigbee2mqtt/data:/app/data
+    container_name: zigbee2mqtt
     restart: unless-stopped
+    devices:
+      - /dev/serial/by-id/usb-SMLIGHT_SMLIGHT_SLZB-06_f2c016c707adef118d468a4ba8793231-if00-port0:/dev/ttyUSB0
     depends_on:
       - mosquitto
     environment:
       - TZ=Europe/Amsterdam
-    networks:
-      - smartworkx
+    volumes:
+      - ./zigbee2mqtt/data:/app/data
+      - /run/udev:/run/udev:ro
+    network_mode: host
+    group_add:
+      - "dialout"  # Give access to serial devices
+      - "tty"      # Give access to serial devices
 
-networks:
-  smartworkx:
-    name: smartworkx
+  zwavejs-ui:
+    container_name: zwavejs-ui
+    image: zwavejs/zwave-js-ui:latest
+    restart: unless-stopped
+    depends_on:
+      - mosquitto
+    devices:
+      - /dev/serial/by-id/usb-0658_0200-if00:/dev/zwave
+    environment:
+      - TZ=Europe/Amsterdam
+      - MQTT_PUBLISH_SET_COMMANDS=true
+    volumes:
+      - ./zwave-js-ui/config:/usr/src/app/store
+    network_mode: host
+    group_add:
+      - "dialout"  # Give access to serial devices
+      - "tty"      # Give access to serial devices
+
+

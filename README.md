@@ -24,3 +24,6 @@ In the diagram you can see my setup
 # Test bench
 
 - https://hometechhacker.com/how-to-make-a-smart-home-test-bench/
+
+- shelly doc: https://kb.shelly.cloud/knowledge-base/shelly-1pm-mini-gen4#Shelly1PMMiniGen4-Deviceidentification
+- https://www.reddit.com/r/ShellyUSA/comments/1eaayq8/shelly_1_mini_g3_how_come_the_toggle_and_edge/
