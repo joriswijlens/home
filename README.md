@@ -19,3 +19,7 @@ I am a few days in and it already payed off.
 
 ![Test bench](./testbench.jpg)
 
+# Documentation
+
+Look at the Architecture Decision Records (ADR) in the `docs/adr` folder for more information about the decisions I made and why.
+
