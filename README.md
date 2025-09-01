@@ -19,7 +19,7 @@ In the diagram you can see my setup
 - Introduce a test environment
 - Deploy from a CI/CD pipeline with GitHub Actions
 
-![Architecture](./home.png)
+![Architecture](./home.drawio.png)
 
 # Test bench
 
