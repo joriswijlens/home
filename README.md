@@ -8,7 +8,7 @@ Main goals:
 
 In the diagram you can see my setup
 
-[Architecture](./home.drawio.png)
+![Architecture](./home.drawio.png)
 
 # Test bench
 
@@ -17,5 +17,5 @@ In the diagram you can see my setup
 This is my test bench for home automation. I use it to test new devices and configurations before deploying them in my home.
 I am a few days in and it already payed off. 
 
-[Test bench](./testbench.jpg)
+![Test bench](./testbench.jpg)
 
