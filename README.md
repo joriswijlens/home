@@ -21,5 +21,5 @@ I am a few days in and it already payed off.
 
 # Documentation
 
-Look at the Architecture Decision Records (ADR) in the `docs/adr` folder for more information about the decisions I made and why.
+Look at the Architecture Decision Records (ADR) in the [ADR](./docs/adr) folder for more information about the decisions I made and why.
 
