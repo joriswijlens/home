@@ -54,7 +54,7 @@
           <mxGeometry x="242.5" y="50" width="120" height="60" as="geometry" />
         </mxCell>
         <mxCell id="pfNigHBNCp9uW7NKkb0O-5" value="Zigbee device" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-          <mxGeometry x="90" y="810" width="120" height="60" as="geometry" />
+          <mxGeometry x="90" y="950" width="120" height="60" as="geometry" />
         </mxCell>
         <mxCell id="pfNigHBNCp9uW7NKkb0O-9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="pfNigHBNCp9uW7NKkb0O-8" target="pfNigHBNCp9uW7NKkb0O-10" edge="1">
           <mxGeometry relative="1" as="geometry">
@@ -65,7 +65,13 @@
           <mxGeometry x="377.5" y="640" width="120" height="60" as="geometry" />
         </mxCell>
         <mxCell id="pfNigHBNCp9uW7NKkb0O-10" value="ZWave device" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-          <mxGeometry x="377.5" y="810" width="120" height="60" as="geometry" />
+          <mxGeometry x="377.5" y="950" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="79iGG8vPfteUdSG45QDy-1" value="SMLight" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="90" y="800" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="79iGG8vPfteUdSG45QDy-2" value="ZWave adapter" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="377.5" y="800" width="120" height="60" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
