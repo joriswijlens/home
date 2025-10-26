@@ -1,0 +1,18 @@
+services:
+  home-assistant:
+    volumes:
+      - ../volumes/home-assistant/config:/config
+  mosquitto:
+    volumes:
+      - ../volumes/mosquitto/data:/mosquitto/data
+      - ../volumes/mosquitto/log:/mosquitto/log
+  zigbee2mqtt:
+    devices:
+      - /dev/null:/dev/ttyUSB0
+    volumes:
+      - ../volumes/zigbee2mqtt/data:/app/data
+  zwavejs-ui:
+    devices:
+      - /dev/null:/dev/zwave
+    volumes:
+      - ../volumes/zwave-js-ui/config:/usr/src/app/store

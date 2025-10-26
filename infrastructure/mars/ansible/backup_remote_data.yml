@@ -1,0 +1,21 @@
+---
+- name: Backup smartworkx volumes
+  hosts: all
+  become: true
+  vars:
+    volumes_dir: /opt/smartworkx/volumes
+    backup_dir: /opt/smartworkx/backups
+    backups_to_keep: 7
+
+  tasks:
+    - name: Ensure backup directory exists
+      ansible.builtin.file:
+        path: "{{ backup_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Create backup
+      community.general.archive:
+        path: "{{ volumes_dir }}"
+        dest: "{{ backup_dir }}/backup-{{ ansible_date_time.iso8601_basic_short }}.tgz"
+        format: gz

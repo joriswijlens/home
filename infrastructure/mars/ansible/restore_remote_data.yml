@@ -1,0 +1,44 @@
+---
+- name: Restore smartworkx volumes
+  hosts: all
+  become: true
+  vars:
+    volumes_dir: /opt/smartworkx
+    backup_dir: /opt/backups/smartworkx
+    # backup_file: smartworkx-backup-YYYYMMDDTHHMMSS.tgz # Pass this as an extra var
+
+  tasks:
+    - name: Find latest backup if backup_file is not provided
+      block:
+        - name: Find latest backup
+          find:
+            paths: "{{ backup_dir }}"
+            patterns: "smartworkx-backup-*.tgz"
+            use_regex: true
+          register: backup_files
+
+        - name: Set latest backup file
+          set_fact:
+            backup_file: "{{ (backup_files.files | sort(attribute='mtime', reverse=true) | first).path }}"
+      when: backup_file is not defined
+
+    - name: Stop services
+      community.docker.docker_compose_v2:
+        project_src: "{{ volumes_dir }}"
+        state: absent
+
+    - name: Remove current volumes
+      ansible.builtin.file:
+        path: "{{ volumes_dir }}"
+        state: absent
+
+    - name: Restore volumes from backup
+      community.general.unarchive:
+        src: "{{ backup_file }}"
+        dest: "/"
+        remote_src: true
+
+    - name: Start services
+      community.docker.docker_compose_v2:
+        project_src: "{{ volumes_dir }}"
+        state: present

@@ -2,3 +2,7 @@
 *.iml
 *.bkp
 *.mp4
+services/docker-compose.override.yml
+services/backups/
+volumes/
+backups/

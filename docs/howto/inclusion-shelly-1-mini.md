@@ -32,6 +32,15 @@
  - Got to zigbee2mqtt
  - Problem solved after setting input type to edge
 
+## Second mini non PM
+- Create wifi connection on the shellly-1 mini
+- Update firmware to the latest version
+- Keep wifi enabled, switch firmeware in setting menu to Zigbee
+- Enable zigbee switches off access point
+
+- Non PM has a wire input I which needs a brown wire connected to the phase.
+
+
 # Resources
 - https://kb.shelly.cloud/knowledge-base/shelly-1pm-mini-gen4#Shelly1PMMiniGen4-Deviceidentification
 - https://www.reddit.com/r/ShellyUSA/comments/1eaayq8/shelly_1_mini_g3_how_come_the_toggle_and_edge/

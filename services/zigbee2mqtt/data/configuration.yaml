@@ -10,3 +10,5 @@ serial:
   rtscts: false             # important for SLZB-06 (hardware flow control)
 frontend:
   port: 8080
+devices: devices.yaml
+groups: groups.yaml

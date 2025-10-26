@@ -6,7 +6,7 @@
   vars:
     project_root: /home/joris/workspaces/smartworkx/home
   roles:
-    - ../../../ansible/roles/docker-host
+    - ../../ansible/roles/docker-host
   tasks:
     - name: Install kernel extra modules
       apt:
@@ -18,45 +18,3 @@
         content: 'SUBSYSTEM=="tty", ATTRS{idVendor}=="0658", ATTRS{idProduct}=="0200", SYMLINK+="zwave"'
         dest: /etc/udev/rules.d/99-zwave.rules
         mode: '0644'
-
-    - name: Ensure base target directory exists
-      ansible.builtin.file:
-        path: /opt/smartworkx
-        state: directory
-        mode: '0755'
-
-    - name: Ensure home-assistant config directory exists on remote
-      ansible.builtin.file:
-        path: /opt/smartworkx/home-assistant/config
-        state: directory
-        mode: '0755'
-
-    - name: Ensure mosquitto config directory exists on remote
-      ansible.builtin.file:
-        path: /opt/smartworkx/mosquitto/config
-        state: directory
-        mode: '0755'
-
-    - name: Ensure mosquitto data directory exists on remote
-      ansible.builtin.file:
-        path: /opt/smartworkx/mosquitto/data
-        state: directory
-        mode: '0755'
-
-    - name: Ensure mosquitto log directory exists on remote
-      ansible.builtin.file:
-        path: /opt/smartworkx/mosquitto/log
-        state: directory
-        mode: '0755'
-
-    - name: Ensure zigbee2mqtt data directory exists on remote
-      ansible.builtin.file:
-        path: /opt/smartworkx/zigbee2mqtt/data
-        state: directory
-        mode: '0755'
-
-    - name: Ensure zwave-js-ui config directory exists on remote
-      ansible.builtin.file:
-        path: /opt/smartworkx/zwave-js-ui/config
-        state: directory
-        mode: '0755'

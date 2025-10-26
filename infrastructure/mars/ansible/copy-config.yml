@@ -1,0 +1,45 @@
+---
+- hosts: all
+  become: true
+  vars:
+    volumes_dir: /opt/smartworkx/volumes
+
+  tasks:
+    - name: Find service directories
+      delegate_to: localhost
+      run_once: true
+      become: false
+      find:
+        paths: "{{ playbook_dir }}/../../../services"
+        file_type: directory
+        recurse: no
+      register: service_dirs_find
+
+    - name: Extract service names
+      delegate_to: localhost
+      run_once: true
+      become: false
+      set_fact:
+        service_names: "{{ service_dirs_find.files | map(attribute='path') | map('basename') | list }}"
+
+    - name: Copy service configurations
+      vars:
+        service_file: "{{ playbook_dir }}/../../../services/{{ item }}/service.yml"
+        service_config: "{{ lookup('file', service_file) | from_yaml }}"
+        config_dir: "{{ service_config.service.config_dir }}"
+      ansible.posix.synchronize:
+        src: "{{ playbook_dir }}/../../../services/{{ item }}/{{ config_dir }}/"
+        dest: "{{ volumes_dir }}/{{ item }}/{{ config_dir }}"
+        mode: push
+        delete: false
+        recursive: true
+        rsync_opts:
+          - "--exclude=.gitignore"
+      loop: "{{ service_names }}"
+
+    - name: Restart Docker Compose services
+      delegate_to: localhost
+      become: false
+      ansible.builtin.shell:
+        cmd: "docker compose -f docker-compose.yml restart"
+        chdir: "{{ playbook_dir }}/../../../services"
