@@ -1,0 +1,37 @@
+- alias: Tuinlamp aan
+  description: ''
+  triggers:
+    - type: occupied
+      device_id: da8fba9efe5d17b6f40c3764174600ee
+      entity_id: bc94d4d1befe990bfeae0902bc4b3aa0
+      domain: binary_sensor
+      trigger: device
+  conditions:
+    - condition: sun
+      after: sunset
+      before: sunrise
+  actions:
+    - type: turn_on
+      device_id: 9bf7b8eee40d2191da0ab134d71a2237
+      entity_id: 902e64f9cafcd2e96196c7c3e3ddabf5
+      domain: switch
+  mode: single
+- alias: Tuinlamp uit
+  description: ''
+  triggers:
+    - type: not_occupied
+      device_id: da8fba9efe5d17b6f40c3764174600ee
+      entity_id: bc94d4d1befe990bfeae0902bc4b3aa0
+      domain: binary_sensor
+      trigger: device
+      for:
+        hours: 0
+        minutes: 5
+        seconds: 0
+  conditions: []
+  actions:
+    - type: turn_off
+      device_id: 9bf7b8eee40d2191da0ab134d71a2237
+      entity_id: 902e64f9cafcd2e96196c7c3e3ddabf5
+      domain: switch
+  mode: single

@@ -1,0 +1,38 @@
+- alias: Lamp voor aan
+  description: ""
+  triggers:
+    - type: occupied
+      device_id: dd8f15fc2620524ab05763d51a44ea33
+      entity_id: 4a0658ba0687fd3e06f8517248aa8a23
+      domain: binary_sensor
+      trigger: device
+  conditions:
+    - condition: sun
+      before: sunrise
+      after: sunset
+  actions:
+    - type: turn_on
+      device_id: 4a961e79515fac65c7cbb7f2e3846bf4
+      entity_id: 7a5f8119a46e6cb1d464ce4c783e782a
+      domain: switch
+  mode: single
+
+- alias: Lamp voor uit
+  description: ""
+  triggers:
+    - type: not_occupied
+      device_id: dd8f15fc2620524ab05763d51a44ea33
+      entity_id: 4a0658ba0687fd3e06f8517248aa8a23
+      domain: binary_sensor
+      trigger: device
+      for:
+        hours: 0
+        minutes: 5
+        seconds: 0
+  conditions: []
+  actions:
+    - type: turn_off
+      device_id: 4a961e79515fac65c7cbb7f2e3846bf4
+      entity_id: 7a5f8119a46e6cb1d464ce4c783e782a
+      domain: switch
+  mode: single

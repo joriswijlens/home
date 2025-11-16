@@ -1,0 +1,19 @@
+- alias: WC lamp automatisch uit
+  description: ''
+  triggers:
+    - type: turned_on
+      device_id: b98b139d422d96754fc52ecd7d0c51be
+      entity_id: aa0aacd2ad16057d46ef7b53315d7579
+      domain: switch
+      trigger: device
+      for:
+        hours: 0
+        minutes: 10
+        seconds: 0
+  conditions: []
+  actions:
+    - type: turn_off
+      device_id: b98b139d422d96754fc52ecd7d0c51be
+      entity_id: aa0aacd2ad16057d46ef7b53315d7579
+      domain: switch
+  mode: single

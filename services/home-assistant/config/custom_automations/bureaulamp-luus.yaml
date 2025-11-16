@@ -1,0 +1,13 @@
+- alias: Bureau lamp luus uit
+  description: ''
+  triggers:
+    - trigger: sun
+      event: sunrise
+      offset: 00:20:00
+  conditions: []
+  actions:
+    - type: turn_off
+      device_id: 0e66f122c4235106dbf3e2548d842812
+      entity_id: 69d9d93687959eef6267b19d7dad01d2
+      domain: switch
+  mode: single

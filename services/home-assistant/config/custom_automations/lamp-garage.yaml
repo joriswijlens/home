@@ -1,0 +1,38 @@
+- alias: Lamp garage automatisch aan
+  description: ''
+  triggers:
+    - type: occupied
+      device_id: 19566758ce99ce1c9ae3cd25c9eae501
+      entity_id: 052aab61003272f259674b8c567c5456
+      domain: binary_sensor
+      trigger: device
+  conditions:
+    - condition: numeric_state
+      entity_id: sensor.0xa4c138d19fa33414_illuminance
+      below: 600
+      enabled: false
+  actions:
+    - type: turn_on
+      device_id: 50383ce23c32075064acd3becf6e22d6
+      entity_id: eecbd18d353e3484b9cccc75b5ebca0b
+      domain: switch
+  mode: single
+- alias: Lamp garage automatisch uit
+  description: ''
+  triggers:
+    - type: not_occupied
+      device_id: 19566758ce99ce1c9ae3cd25c9eae501
+      entity_id: 052aab61003272f259674b8c567c5456
+      domain: binary_sensor
+      trigger: device
+      for:
+        hours: 0
+        minutes: 5
+        seconds: 0
+  conditions: []
+  actions:
+    - type: turn_off
+      device_id: 50383ce23c32075064acd3becf6e22d6
+      entity_id: eecbd18d353e3484b9cccc75b5ebca0b
+      domain: switch
+  mode: single

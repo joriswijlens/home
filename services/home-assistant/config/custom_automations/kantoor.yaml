@@ -1,0 +1,45 @@
+- alias: Kantoor uit na werkdag
+  description: ""
+  triggers:
+    - trigger: time_pattern
+      hours: "17"
+      minutes: "30"
+      seconds: "00"
+  conditions: [ ]
+  actions:
+    - type: turn_off
+      device_id: bfb9f1b0989772bbe5da4e453b3edeff
+      entity_id: 1a677eedd13471386640835de4ce960d
+      domain: switch
+    - type: turn_off
+      device_id: 5e02c7f496ad77f907b7906ec10a0136
+      entity_id: 056bf3d87209ce6f3696eeb1ee399f37
+      domain: switch
+    - type: turn_off
+      device_id: 5832b6aab5995ba76d07e69f39a15b89
+      entity_id: 5cc5be54a6c4220d49de9188c15d2840
+      domain: switch
+  mode: single
+
+- alias: Kantoor uit bedtijd
+  description: ""
+  triggers:
+    - trigger: time_pattern
+      hours: "23"
+      minutes: "30"
+      seconds: "00"
+  conditions: [ ]
+  actions:
+    - type: turn_off
+      device_id: bfb9f1b0989772bbe5da4e453b3edeff
+      entity_id: 1a677eedd13471386640835de4ce960d
+      domain: switch
+    - type: turn_off
+      device_id: 5e02c7f496ad77f907b7906ec10a0136
+      entity_id: 056bf3d87209ce6f3696eeb1ee399f37
+      domain: switch
+    - type: turn_off
+      device_id: 5832b6aab5995ba76d07e69f39a15b89
+      entity_id: 5cc5be54a6c4220d49de9188c15d2840
+      domain: switch
+  mode: single
