@@ -1,10 +1,11 @@
 # Mars Server Setup Guide
 
-This document outlines the physical and initial software setup for the Mars Raspberry Pi 5 server.
+This document outlines the physical and initial software setup for the Venus Raspberry Pi 5 server.
 
-My mars server is my home automation server. It runs various services such as Home Assistant, Zigbee2MQTT, and others
-using Docker containers managed via Docker Compose. The server is built on a Raspberry Pi 5 with an SSD for storage to
-ensure reliability and performance.
+My mars server is my family cloud server. It will run:
+- Opencloud - file sharing
+- Radicale - calendar and contacts
+- Vaultwarden - secrets
 
 ## Setup
 
@@ -17,7 +18,6 @@ ensure reliability and performance.
 - Usb mouse and keyboard
 
 ### Setup Steps
-
 - Physically mounted SSD on the Raspberry Pi
 - Prepared SD card with rpi os (rpi os has rpi-imager installed). I want to use rpi-imager ui to set server image on ssd
   https://www.raspberrypi.com/documentation/computers/getting-started.html#raspberry-pi-imager
@@ -62,29 +62,7 @@ Removed modem manager:
 sudo systemctl disable ModemManager
 ```
 
-#### Pre-Deployment Backup
+## References
 
-Before deploying, it's highly recommended to create a backup of your critical service data directly on the remote host.
-This ensures that if anything goes wrong during deployment, you have a recent snapshot of your configurations and data.
-
-To perform a remote backup using Ansible, navigate to the `infrastructure/mars/ansible` directory and run the
-`backup_remote_data.yml` playbook:
-
-```bash
-ansible-playbook -i inventory.ini backup_remote_data.yml
-```
-
-This Ansible playbook will connect to your remote host, create a timestamped backup of your service data directories,
-and store it in a `backups/` folder within your `services` directory on the remote host.
-
-#### Restoring from Backup
-
-In case of data loss or corruption, you can restore your critical service data from a previous backup using an Ansible
-playbook.
-
-To restore, navigate to the `infrastructure/mars/ansible` directory and run the `restore_remote_data.yml` playbook,
-providing the `backup_timestamp` as a variable:
-
-```bash
-ansible-playbook -i inventory.ini restore_remote_data.yml -e "backup_timestamp=YYYYMMDD_HHMMSS"
-```
+- https://docs.opencloud.eu/docs/admin/getting-started/container/docker-compose/docker-compose-base
+- 
