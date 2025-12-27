@@ -49,7 +49,7 @@ This playbook is used to set up the Home Assistant host.
 **Usage:**
 
 ```bash
-ansible-playbook -i inventory.ini setup-ha-host-playbook.yml
+ansible-playbook -i inventory.ini setup-host-playbook.yml
 ```
 
 ## General Usage
