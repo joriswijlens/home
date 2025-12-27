@@ -5,6 +5,7 @@ This repository contains all the code and documentation for my home automation.
 Main goals:
 - zero emission
 - comfort in smart automation
+- getting rid of big tech companies
 
 In the diagram you can see my setup
 
