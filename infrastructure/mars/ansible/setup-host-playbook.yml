@@ -18,3 +18,120 @@
         content: 'SUBSYSTEM=="tty", ATTRS{idVendor}=="0658", ATTRS{idProduct}=="0200", SYMLINK+="zwave"'
         dest: /etc/udev/rules.d/99-zwave.rules
         mode: '0644'
+
+    # Scaleway backup configuration
+    - name: Ensure rclone is installed
+      apt:
+        name: rclone
+        state: present
+        update_cache: yes
+
+    - name: Ensure rclone config directory exists
+      file:
+        path: /root/.config/rclone
+        state: directory
+        mode: '0700'
+        owner: root
+        group: root
+
+    - name: Copy rclone configuration
+      copy:
+        src: files/rclone.conf
+        dest: /root/.config/rclone/rclone.conf
+        mode: '0600'
+        owner: root
+        group: root
+
+    - name: Check if Scaleway credentials file exists
+      stat:
+        path: /root/.scaleway-credentials
+      register: scaleway_creds
+
+    - name: Prompt for Scaleway credentials setup
+      pause:
+        prompt: |
+          ========================================
+          Scaleway credentials not found!
+          ========================================
+          Please create /root/.scaleway-credentials on Mars with:
+
+          export AWS_ACCESS_KEY_ID="your-scaleway-access-key"
+          export AWS_SECRET_ACCESS_KEY="your-scaleway-secret-key"
+
+          1. Get credentials from: https://console.scaleway.com/iam/api-keys
+          2. Create a bucket named 'com-smartworkx-mars-backup' in fr-par region
+          3. SSH to mars.local and create the file with the credentials
+
+          Press Enter when done...
+          ========================================
+      when: not scaleway_creds.stat.exists
+
+    - name: Copy backup script
+      copy:
+        src: files/mars-backup.sh
+        dest: /usr/local/bin/mars-backup.sh
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Copy systemd service file
+      copy:
+        src: files/mars-backup.service
+        dest: /etc/systemd/system/mars-backup.service
+        mode: '0644'
+        owner: root
+        group: root
+
+    - name: Copy systemd timer file
+      copy:
+        src: files/mars-backup.timer
+        dest: /etc/systemd/system/mars-backup.timer
+        mode: '0644'
+        owner: root
+        group: root
+
+    - name: Reload systemd daemon
+      systemd:
+        daemon_reload: yes
+
+    - name: Enable and start backup timer
+      systemd:
+        name: mars-backup.timer
+        enabled: yes
+        state: started
+
+    - name: Display timer status
+      command: systemctl status mars-backup.timer
+      register: timer_status
+      changed_when: false
+
+    - name: Show timer status
+      debug:
+        msg: "{{ timer_status.stdout_lines }}"
+
+    - name: Display next scheduled run
+      command: systemctl list-timers mars-backup.timer
+      register: next_run
+      changed_when: false
+
+    - name: Show next scheduled run
+      debug:
+        msg: "{{ next_run.stdout_lines }}"
+
+    - name: Display manual test instructions
+      debug:
+        msg: |
+          ========================================
+          Backup setup complete!
+          ========================================
+          To test the backup manually, run on Mars:
+          sudo systemctl start mars-backup.service
+          sudo journalctl -u mars-backup.service -f
+
+          To check backup status:
+          sudo systemctl status mars-backup.timer
+          sudo systemctl list-timers mars-backup.timer
+
+          Logs are available at:
+          /var/log/mars-backup.log
+          ========================================

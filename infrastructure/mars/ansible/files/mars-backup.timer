@@ -1,0 +1,12 @@
+[Unit]
+Description=Run Mars Home Assistant Backup every 6 hours
+Requires=mars-backup.service
+
+[Timer]
+OnBootSec=15min
+OnUnitActiveSec=6h
+AccuracySec=1min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

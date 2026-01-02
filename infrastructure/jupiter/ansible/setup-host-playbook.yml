@@ -7,3 +7,153 @@
     project_root: /home/joris/workspaces/smartworkx/home
   roles:
     - ../../ansible/roles/docker-host
+  tasks:
+    - name: Install Node.js and npm
+      apt:
+        name:
+          - nodejs
+          - npm
+        state: present
+        update_cache: yes
+
+    - name: Install Vim
+      apt:
+        name: vim
+        state: present
+
+    - name: Verify Node.js installation
+      command: node --version
+      register: node_version
+      changed_when: false
+
+    - name: Verify npm installation
+      command: npm --version
+      register: npm_version
+      changed_when: false
+
+    - name: Display Node.js version
+      debug:
+        msg: "Node.js version: {{ node_version.stdout }}"
+
+    - name: Display npm version
+      debug:
+        msg: "npm version: {{ npm_version.stdout }}"
+
+    - name: Install Claude CLI globally via npm
+      npm:
+        name: "@anthropic-ai/claude-code"
+        global: yes
+        state: present
+
+    - name: Verify Claude CLI installation
+      command: claude --version
+      register: claude_version
+      changed_when: false
+
+    - name: Display Claude CLI version
+      debug:
+        msg: "Claude CLI version: {{ claude_version.stdout }}"
+
+    - name: Install rclone
+      apt:
+        name: rclone
+        state: present
+        update_cache: yes
+
+    - name: Verify rclone installation
+      command: rclone version
+      register: rclone_version
+      changed_when: false
+
+    - name: Display rclone version
+      debug:
+        msg: "rclone version: {{ rclone_version.stdout_lines[0] }}"
+
+    # Backup configuration
+    - name: Check if Scaleway credentials file exists
+      stat:
+        path: /root/.scaleway-credentials
+      register: scaleway_creds_stat
+
+    - name: Display message about Scaleway credentials
+      debug:
+        msg: |
+          ========================================
+          Scaleway Credentials Required
+          ========================================
+          Please create /root/.scaleway-credentials on Jupiter with:
+
+          export AWS_ACCESS_KEY_ID="your-access-key"
+          export AWS_SECRET_ACCESS_KEY="your-secret-key"
+
+          Then run: chmod 600 /root/.scaleway-credentials
+          ========================================
+      when: not scaleway_creds_stat.stat.exists
+
+    - name: Ensure rclone config directory exists
+      file:
+        path: /root/.config/rclone
+        state: directory
+        mode: '0700'
+        owner: root
+        group: root
+
+    - name: Copy rclone configuration
+      copy:
+        src: files/rclone.conf
+        dest: /root/.config/rclone/rclone.conf
+        mode: '0600'
+        owner: root
+        group: root
+
+    - name: Copy backup script
+      copy:
+        src: files/opencloud-backup.sh
+        dest: /usr/local/bin/opencloud-backup.sh
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Copy systemd service file
+      copy:
+        src: files/opencloud-backup.service
+        dest: /etc/systemd/system/opencloud-backup.service
+        mode: '0644'
+        owner: root
+        group: root
+
+    - name: Copy systemd timer file
+      copy:
+        src: files/opencloud-backup.timer
+        dest: /etc/systemd/system/opencloud-backup.timer
+        mode: '0644'
+        owner: root
+        group: root
+
+    - name: Reload systemd daemon
+      systemd:
+        daemon_reload: yes
+
+    - name: Enable and start backup timer
+      systemd:
+        name: opencloud-backup.timer
+        enabled: yes
+        state: started
+
+    - name: Display timer status
+      command: systemctl status opencloud-backup.timer
+      register: timer_status
+      changed_when: false
+
+    - name: Show timer status
+      debug:
+        msg: "{{ timer_status.stdout_lines }}"
+
+    - name: Display next scheduled run
+      command: systemctl list-timers opencloud-backup.timer
+      register: next_run
+      changed_when: false
+
+    - name: Show next scheduled run
+      debug:
+        msg: "{{ next_run.stdout_lines }}"

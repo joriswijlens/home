@@ -1,0 +1,14 @@
+[Unit]
+Description=OpenCloud Backup to Hetzner Storage Box
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/opencloud-backup.sh
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=opencloud-backup
+
+[Install]
+WantedBy=multi-user.target

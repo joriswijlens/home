@@ -1,0 +1,14 @@
+[Unit]
+Description=Mars Home Assistant Backup to Scaleway Object Storage
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/mars-backup.sh
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mars-backup
+
+[Install]
+WantedBy=multi-user.target
