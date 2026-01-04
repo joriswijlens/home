@@ -5,17 +5,17 @@ server.
 
 ## Docker Compose Process
 
-The services are managed using `docker-compose`. The main `docker-compose.yml` file is located in this directory.
+The services are managed using `docker compose`. The main `docker-compose.yml` file is located in this directory.
 
 ### Local Testing
 
-To test the services locally, you can use `docker-compose`. Make sure you have Docker and `docker-compose` installed on
+To test the services locally, you can use `docker compose`. Make sure you have Docker and `docker compose` installed on
 your local machine.
 
 Run the following command in this directory (`services`):
 
 ```bash
-docker-compose up
+docker compose up
 ```
 
 This will build the images (if they don't exist locally) and start all the services defined in the `docker-compose.yml`
@@ -30,7 +30,7 @@ For local testing, you can use a `docker-compose.dev.yml` file to adjust configu
 
 1.  **`docker-compose.dev.yml`:** In this same `services` directory, you will find a file named `docker-compose.dev.yml`.
 
-2.  When you run `docker-compose up `, TODO research
+2.  When you run `docker compose up `, TODO research
 
 3.  **Git Ignore:** Remember that `docker-compose.dev.yml` is typically added to `.gitignore` as it contains local-specific configurations. Also, the `volumes` directory itself should be added to `.gitignore`.
 

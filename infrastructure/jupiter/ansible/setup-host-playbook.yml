@@ -157,3 +157,31 @@
     - name: Show next scheduled run
       debug:
         msg: "{{ next_run.stdout_lines }}"
+
+    # Fix permissions for backup directories
+    - name: Ensure backup directories exist with correct permissions
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: 1000
+        group: 1000
+        mode: '0755'
+      loop:
+        - /etc/opencloud
+        - /var/lib/opencloud
+        - /var/lib/radicale
+        - /var/lib/vaultwarden/data
+
+    - name: Fix ownership of all files in backup directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: 1000
+        group: 1000
+        mode: '0755'
+        recurse: yes
+      loop:
+        - /etc/opencloud
+        - /var/lib/opencloud
+        - /var/lib/radicale
+        - /var/lib/vaultwarden/data

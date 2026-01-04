@@ -10,7 +10,7 @@ if [ -f /root/.scaleway-credentials ]; then
     source /root/.scaleway-credentials
 fi
 
-BACKUP_DIRS="/etc/opencloud /var/lib/opencloud /var/lib/radicale"
+BACKUP_DIRS="/etc/opencloud /var/lib/opencloud /var/lib/radicale /var/lib/vaultwarden/data"
 REMOTE="scaleway:jupiter-backup"
 LOG_FILE="/var/log/opencloud-backup.log"
 
