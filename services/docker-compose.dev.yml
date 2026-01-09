@@ -16,3 +16,9 @@ services:
       - /dev/null:/dev/zwave
     volumes:
       - ../volumes/zwave-js-ui/config:/usr/src/app/store
+  uptime-kuma:
+    volumes:
+      - ../volumes/uptime-kuma/data:/app/data
+  signal-api:
+    volumes:
+      - ../volumes/signal-api/data:/home/.local/share/signal-cli

@@ -55,3 +55,22 @@ services:
     group_add:
       - "dialout"  # Give access to serial devices
       - "tty"      # Give access to serial devices
+
+  uptime-kuma:
+    container_name: uptime-kuma
+    image: louislam/uptime-kuma:1
+    restart: unless-stopped
+    volumes:
+      - ${VOLUMES_DIR}/uptime-kuma/data:/app/data
+    network_mode: host
+
+  signal-api:
+    container_name: signal-api
+    image: bbernhard/signal-cli-rest-api:latest
+    restart: unless-stopped
+    environment:
+      - MODE=native
+      - PORT=8081
+    volumes:
+      - ${VOLUMES_DIR}/signal-api/data:/home/.local/share/signal-cli
+    network_mode: host
