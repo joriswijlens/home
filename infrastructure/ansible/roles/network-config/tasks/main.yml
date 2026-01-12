@@ -1,0 +1,166 @@
+---
+# Network configuration role for Ubuntu 24.04
+# Fixes ethernet connectivity issue caused by RPi Imager cloud-init WiFi-only config
+# Preserves existing WiFi configuration while adding eth0
+
+- name: Get physical ethernet interface MAC address
+  shell: ip link show eth0 | grep "link/ether" | awk '{print $2}'
+  register: eth_mac
+  changed_when: false
+
+- name: Display detected MAC address
+  debug:
+    msg: "Detected eth0 MAC address: {{ eth_mac.stdout }}"
+
+- name: Create backup directory for netplan configs
+  file:
+    path: /etc/netplan/backup
+    state: directory
+    mode: '0755'
+
+- name: Backup existing netplan configs
+  shell: cp /etc/netplan/*.yaml /etc/netplan/backup/backup-$(date +%Y%m%d-%H%M%S)/ 2>/dev/null || true
+  args:
+    warn: false
+  changed_when: false
+
+- name: Check if cloud-init netplan config exists
+  stat:
+    path: /etc/netplan/50-cloud-init.yaml
+  register: cloud_init_netplan
+
+- name: Read existing cloud-init netplan config
+  slurp:
+    src: /etc/netplan/50-cloud-init.yaml
+  register: cloud_init_content
+  when: cloud_init_netplan.stat.exists
+
+- name: Parse existing WiFi configuration
+  set_fact:
+    existing_wifi_config: "{{ (cloud_init_content.content | b64decode | from_yaml).network.wifis | default({}) }}"
+  when: cloud_init_netplan.stat.exists and cloud_init_content is defined
+
+- name: Disable cloud-init network management
+  copy:
+    content: |
+      network: {config: disabled}
+    dest: /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
+    mode: '0644'
+
+- name: Build netplan configuration with ethernet and existing WiFi
+  set_fact:
+    netplan_config:
+      network:
+        version: 2
+        renderer: networkd
+        ethernets:
+          eth0:
+            match:
+              macaddress: "{{ eth_mac.stdout }}"
+            dhcp4: true
+            dhcp6: true
+            optional: false
+            set-name: eth0
+        wifis: "{{ existing_wifi_config }}"
+  when: cloud_init_netplan.stat.exists and existing_wifi_config is defined and existing_wifi_config | length > 0
+
+- name: Write netplan configuration with ethernet and existing WiFi
+  copy:
+    content: "{{ netplan_config | to_nice_yaml }}"
+    dest: /etc/netplan/01-netcfg.yaml
+    mode: '0600'
+  when: cloud_init_netplan.stat.exists and existing_wifi_config is defined and existing_wifi_config | length > 0
+
+- name: Create netplan configuration with ethernet only (no existing WiFi found)
+  copy:
+    content: |
+      network:
+        version: 2
+        renderer: networkd
+        ethernets:
+          eth0:
+            match:
+              macaddress: "{{ eth_mac.stdout }}"
+            dhcp4: true
+            dhcp6: true
+            optional: false
+            set-name: eth0
+    dest: /etc/netplan/01-netcfg.yaml
+    mode: '0600'
+  when: not cloud_init_netplan.stat.exists or existing_wifi_config is not defined or existing_wifi_config | length == 0
+
+- name: Remove old cloud-init netplan config
+  file:
+    path: /etc/netplan/50-cloud-init.yaml
+    state: absent
+
+- name: Create udev rule for stable interface naming
+  copy:
+    content: |
+      SUBSYSTEM=="net", ACTION=="add", ATTR{address}=="{{ eth_mac.stdout }}", NAME="eth0"
+    dest: /etc/udev/rules.d/70-persistent-net.rules
+    mode: '0644'
+
+- name: Backup old systemd network configs
+  shell: |
+    mkdir -p /etc/systemd/network/backup
+    cp /etc/systemd/network/10-* /etc/systemd/network/backup/ 2>/dev/null || true
+  args:
+    warn: false
+  changed_when: false
+
+- name: Remove old systemd network config for eth0
+  file:
+    path: /etc/systemd/network/10-eth0.network
+    state: absent
+
+- name: Generate new netplan configuration
+  command: netplan generate
+
+- name: Restart systemd-networkd to apply changes
+  systemd:
+    name: systemd-networkd
+    state: restarted
+
+- name: Reload udev rules
+  command: udevadm control --reload-rules
+
+- name: Wait for network to stabilize
+  pause:
+    seconds: 5
+
+- name: Display current eth0 status
+  shell: ip addr show eth0
+  register: eth0_status
+  changed_when: false
+
+- name: Show eth0 status
+  debug:
+    msg: "{{ eth0_status.stdout_lines }}"
+
+- name: Check if eth0 has IPv4 address
+  shell: ip -4 addr show eth0 | grep -q "inet "
+  register: eth0_has_ipv4
+  changed_when: false
+  failed_when: false
+
+- name: Show routing table
+  shell: ip route show | head -4
+  register: routes
+  changed_when: false
+  when: eth0_has_ipv4.rc == 0
+
+- name: Display routes
+  debug:
+    msg: "{{ routes.stdout_lines }}"
+  when: eth0_has_ipv4.rc == 0
+
+- name: Show success message
+  debug:
+    msg: "✓ Ethernet fix applied successfully! eth0 has IPv4 address and is the primary interface. WiFi preserved as failover."
+  when: eth0_has_ipv4.rc == 0
+
+- name: Show reboot recommendation
+  debug:
+    msg: "⚠ eth0 doesn't have IPv4 yet. Reboot recommended: sudo reboot"
+  when: eth0_has_ipv4.rc != 0

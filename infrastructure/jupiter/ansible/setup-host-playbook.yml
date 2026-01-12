@@ -6,6 +6,7 @@
   vars:
     project_root: /home/joris/workspaces/smartworkx/home
   roles:
+    - ../../ansible/roles/network-config
     - ../../ansible/roles/docker-host
   tasks:
     - name: Install Node.js and npm

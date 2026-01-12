@@ -14,6 +14,30 @@
 - rclone
 - Opencloud
 
+## Network Configuration
+
+### Ethernet Setup (Ubuntu 24.04)
+
+**Issue**: When imaging Ubuntu Server 24.04 with Raspberry Pi Imager and configuring WiFi during the imaging process, the resulting cloud-init configuration only includes WiFi - eth0 is not configured for DHCP and won't get an IPv4 address.
+
+**Symptoms**:
+- eth0 shows as UP but has no IPv4 address (only IPv6)
+- System connects via WiFi instead of ethernet
+- `ip addr show eth0` shows no `inet` line
+
+**Root Cause**: Raspberry Pi Imager's cloud-init configuration only includes the WiFi network configured during imaging. Ethernet must be manually added to netplan afterwards.
+
+**Solution Applied**:
+- Netplan configured with both eth0 (primary, metric 100) and wlan0 (fallback, metric 600)
+- eth0 and wlan0 MAC addresses configured for stable interface naming
+- Configuration file: `/etc/netplan/01-netcfg.yaml`
+- Cloud-init network management disabled: `/etc/cloud/cloud.cfg.d/99-disable-network-config.cfg`
+
+**Current Status**:
+- Primary connection via ethernet (eth0)
+- WiFi configured as automatic failover
+- All traffic routes through eth0 (lower metric = higher priority)
+
 ## Ansible Deployment
 
 - Use Ansible to set up the Raspberry Pi server (install Docker, Node.js, Vim, Claude CLI, etc.):

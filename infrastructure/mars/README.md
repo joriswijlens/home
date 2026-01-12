@@ -4,6 +4,37 @@
 
 For the initial Raspberry Pi setup, follow the instructions in [rpi-setup.md](../rpi-setup.md), using `mars` as the hostname.
 
+## Network Configuration
+
+### Ethernet Setup (Ubuntu 24.04)
+
+**Issue**: When imaging Ubuntu Server 24.04 with Raspberry Pi Imager and configuring WiFi during the imaging process, the resulting cloud-init configuration only includes WiFi - eth0 is not configured for DHCP and won't get an IPv4 address.
+
+**Symptoms**:
+- eth0 shows as UP but has no IPv4 address (only IPv6)
+- System connects via WiFi instead of ethernet
+- `ip addr show eth0` shows no `inet` line
+
+**Root Cause**: Raspberry Pi Imager's cloud-init configuration only includes the WiFi network configured during imaging. Ethernet must be manually added to netplan afterwards. Docker's virtual ethernet interfaces (veth*) may appear in logs but are not the cause of the issue.
+
+**Solution**:
+Run the Ansible playbook to fix ethernet configuration:
+```bash
+cd infrastructure/ansible
+ansible-playbook -i ../mars/ansible/inventory.ini fix-ethernet-ubuntu2404.yml
+```
+
+This playbook will:
+- Configure eth0 with DHCP and MAC address matching
+- Keep WiFi as automatic failover (or disable it if desired)
+- Disable cloud-init network management
+- Create stable interface naming with udev rules
+
+**Expected Result**:
+- Primary connection via ethernet (eth0)
+- WiFi configured as automatic failover (metric 600)
+- All traffic routes through eth0 (metric 100)
+
 ## Ansible Deployment
 
 - Use Ansible to set up the Raspberry Pi server (install Docker, etc.):

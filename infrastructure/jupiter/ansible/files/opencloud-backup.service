@@ -1,5 +1,5 @@
 [Unit]
-Description=OpenCloud Backup to Hetzner Storage Box
+Description=OpenCloud Backup to Scaleway Object Storage
 After=network-online.target
 Wants=network-online.target
 
