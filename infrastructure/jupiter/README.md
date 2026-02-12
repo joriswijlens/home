@@ -13,6 +13,7 @@
 - Claude CLI
 - rclone
 - Opencloud
+- Grafana, Loki, Prometheus (monitoring stack)
 
 ## Network Configuration
 
@@ -71,6 +72,51 @@ Opencloud is managed using Docker Compose, but the configuration is done **direc
    ```bash
    docker compose up -d
    ```
+
+## Monitoring Stack
+
+Grafana + Loki + Prometheus for centralized logging and metrics. Remote nodes (EC2) push data over WireGuard.
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| Grafana | 3000 | Dashboard UI |
+| Loki | 3100 | Log aggregation (push API) |
+| Prometheus | 9090 | Metrics (remote-write receiver) |
+
+### Deploy Configuration
+
+```bash
+cd infrastructure/jupiter/ansible/
+ansible-playbook -i inventory.ini copy-config.yml
+```
+
+### Start Stack
+
+```bash
+docker context use jupiter
+cd infrastructure/jupiter/
+docker compose up -d
+docker context use default
+```
+
+### Endpoints
+
+- Grafana: `http://jupiter.local:3000`
+- Loki push API: `http://<jupiter-wireguard-ip>:3100/loki/api/v1/push`
+- Prometheus remote-write: `http://<jupiter-wireguard-ip>:9090/api/v1/write`
+
+### Retention
+
+- Loki: 6 months (4320h)
+- Prometheus: 6 months / 50GB max
+
+### Configuration Files
+
+- `docker-compose.yml` - service definitions
+- `loki-config/loki.yml` - Loki storage and retention config
+- `prometheus-config/prometheus.yml` - Prometheus config
+- `grafana-config/grafana.ini` - Grafana settings
+- `grafana-config/provisioning/datasources/datasources.yml` - auto-provisioned data sources
 
 ## Backup Configuration
 

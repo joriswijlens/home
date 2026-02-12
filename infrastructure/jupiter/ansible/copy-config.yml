@@ -1,0 +1,61 @@
+---
+- hosts: all
+  become: true
+  vars:
+    jupiter_home: /home/joris/workspaces/smartworkx/home/infrastructure/jupiter
+
+  tasks:
+    - name: Ensure Jupiter infrastructure directory exists
+      file:
+        path: "{{ jupiter_home }}"
+        state: directory
+        owner: joris
+        group: joris
+        mode: '0755'
+
+    - name: Copy loki configuration directory
+      ansible.posix.synchronize:
+        src: "{{ playbook_dir }}/../loki-config/"
+        dest: "{{ jupiter_home }}/loki-config"
+        mode: push
+        delete: false
+        recursive: true
+        rsync_opts:
+          - "--exclude=.gitignore"
+
+    - name: Copy prometheus configuration directory
+      ansible.posix.synchronize:
+        src: "{{ playbook_dir }}/../prometheus-config/"
+        dest: "{{ jupiter_home }}/prometheus-config"
+        mode: push
+        delete: false
+        recursive: true
+        rsync_opts:
+          - "--exclude=.gitignore"
+
+    - name: Copy grafana configuration directory
+      ansible.posix.synchronize:
+        src: "{{ playbook_dir }}/../grafana-config/"
+        dest: "{{ jupiter_home }}/grafana-config"
+        mode: push
+        delete: false
+        recursive: true
+        rsync_opts:
+          - "--exclude=.gitignore"
+
+    - name: Copy docker-compose.yml
+      copy:
+        src: "{{ playbook_dir }}/../docker-compose.yml"
+        dest: "{{ jupiter_home }}/docker-compose.yml"
+        owner: joris
+        group: joris
+        mode: '0644'
+
+    - name: Restart monitoring containers
+      become: false
+      delegate_to: localhost
+      ansible.builtin.shell:
+        cmd: "docker compose restart grafana loki prometheus"
+        chdir: "{{ playbook_dir }}/.."
+      environment:
+        DOCKER_CONTEXT: jupiter
