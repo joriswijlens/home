@@ -22,7 +22,7 @@
     entity_id: 153477c2d061ea13adbfed29bccae9e9
     domain: sensor
     trigger: device
-    below: 68
+    below: 65
   conditions: []
   actions:
   - type: turn_off

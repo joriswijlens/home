@@ -1,10 +1,11 @@
 services:
   wg-easy:
     container_name: wg-easy
-    image: ghcr.io/wg-easy/wg-easy:15.1
+    image: ghcr.io/wg-easy/wg-easy:15.2
     restart: unless-stopped
     environment:
       - INSECURE=true  # Allow HTTP access for local network use
+      - WG_DEFAULT_DNS=10.8.0.1  # Use dnsmasq for DNS resolution
     volumes:
       - ./data:/etc/wireguard
       - /lib/modules:/lib/modules:ro
@@ -20,3 +21,15 @@ services:
       - net.ipv6.conf.all.disable_ipv6=0
       - net.ipv6.conf.all.forwarding=1
       - net.ipv6.conf.default.forwarding=1
+
+  dnsmasq:
+    container_name: dnsmasq
+    image: dockurr/dnsmasq:latest
+    restart: unless-stopped
+    network_mode: "service:wg-easy"
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - ./dnsmasq-config/dnsmasq.conf:/etc/dnsmasq.conf:ro
+    depends_on:
+      - wg-easy

@@ -11,6 +11,9 @@
 - **wg-easy v15.1**: WireGuard VPN with web UI management
   - Web UI: http://saturn:51821 (HTTP only, `INSECURE=true` for LAN access)
   - VPN Port: UDP 51820
+- **dnsmasq 2.90**: Lightweight DNS server for VPN clients
+  - Listens on: 10.8.0.1:53 (WireGuard interface)
+  - Resolves local hostnames for infrastructure servers
 
 ## Setup Summary
 
@@ -95,33 +98,56 @@ docker compose restart
 docker context use default
 ```
 
-## Known Issues & Future Improvements
+## DNS Configuration
 
 ### Local Hostname Resolution
 
-**Issue**: VPN clients cannot resolve local hostnames (e.g., `saturn`, `mars.local`) by default.
+A **dnsmasq** service runs alongside wg-easy to provide DNS resolution for local infrastructure hostnames to VPN clients.
 
-**Current Workaround**: Add entries to `/etc/hosts` on client devices:
-```bash
-# On Linux/Mac clients:
-sudo nano /etc/hosts
+**How it works:**
+- dnsmasq listens on the WireGuard interface at `10.8.0.1`
+- Forwards DNS queries to KPN router (192.168.2.254) for local hostname resolution
+- Falls back to Cloudflare DNS (1.1.1.1, 1.0.0.1) for public domains
+- Automatically appends `.home` domain to short hostnames (e.g., `mars` → `mars.home`)
+- Router resolves all local hostnames: `mars`, `jupiter`, `venus`, `saturn`
 
-# Add:
-192.168.2.79    saturn
-192.168.2.37    venus
-# etc...
-```
+**Setup:**
 
-**Permanent Solution** (TODO): Deploy dnsmasq or Pi-hole as a Docker Compose service on Saturn to provide DNS for VPN clients:
-1. Create `services/dnsmasq/` or use Pi-hole
-2. Configure it to:
-   - Listen on WireGuard interface (wg0, 10.8.0.1)
-   - Resolve local hostnames for all infrastructure servers
-   - Forward other queries to public DNS (1.1.1.1, 1.0.0.1)
-3. Update wg-easy DNS settings to point clients to `10.8.0.1`
-4. Recreate VPN client configs with new DNS setting
+DNS is automatically configured via `WG_DEFAULT_DNS=10.8.0.1` in docker-compose.yml. All new VPN clients will automatically use dnsmasq for DNS resolution.
 
-This would allow all VPN clients to automatically resolve local hostnames without manual configuration.
+1. **Deploy both services** (using Docker context):
+   ```bash
+   docker context use saturn
+   cd infrastructure/saturn
+   docker compose up -d
+   docker compose logs -f
+   docker context use default
+   ```
+
+2. **For existing VPN clients** - update to use new DNS:
+   - Option A: In wg-easy web UI (`http://saturn:51821`), edit each client and change DNS to `10.8.0.1`
+   - Option B: Delete and recreate clients (they'll automatically get `10.8.0.1` DNS)
+
+3. **Test DNS resolution** (from VPN client):
+   ```bash
+   # Should resolve to local IPs via KPN router:
+   nslookup mars 10.8.0.1
+   nslookup jupiter 10.8.0.1
+   nslookup saturn 10.8.0.1
+
+   # Should resolve via Cloudflare:
+   nslookup google.com 10.8.0.1
+   ```
+
+   **Note**: Use short hostnames (`mars`, `jupiter`) without the `.local` suffix. The `.local` domain uses mDNS which doesn't work over traditional DNS forwarding.
+
+**Configuration:**
+- `dnsmasq-config/dnsmasq.conf` - Main dnsmasq configuration
+  - Forwards to KPN router (192.168.2.254) for local hostnames
+  - No manual IP mapping needed - router handles it automatically
+
+**Logging:**
+Query logging is enabled by default for debugging. To disable, comment out `log-queries` in `dnsmasq.conf`.
 
 ## Related Infrastructure Changes
 
