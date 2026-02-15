@@ -1,9 +1,4 @@
-# This file is not currently used
-# dnsmasq forwards all DNS queries to the KPN router (192.168.2.254)
-# which automatically resolves local hostnames
-
-# If you need to override specific hostnames, you can add them here
-# and mount this file in docker-compose.yml with:
-#   - ./dnsmasq-config/hosts:/etc/dnsmasq-hosts/hosts:ro
-# Then add to dnsmasq.conf:
-#   addn-hosts=/etc/dnsmasq-hosts/hosts
+192.168.2.34  mars
+192.168.2.33  jupiter
+192.168.2.79  saturn
+192.168.2.37  venus

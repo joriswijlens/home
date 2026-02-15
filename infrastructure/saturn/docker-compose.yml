@@ -12,6 +12,8 @@ services:
     ports:
       - "51820:51820/udp"  # WireGuard port
       - "51821:51821/tcp"  # Web UI
+      - "53:53/udp"        # DNS (dnsmasq, shared network)
+      - "53:53/tcp"        # DNS (dnsmasq, shared network)
     cap_add:
       - NET_ADMIN
       - SYS_MODULE
@@ -31,5 +33,6 @@ services:
       - NET_ADMIN
     volumes:
       - ./dnsmasq-config/dnsmasq.conf:/etc/dnsmasq.conf:ro
+      - ./dnsmasq-config/hosts:/etc/dnsmasq-hosts/hosts:ro
     depends_on:
       - wg-easy
