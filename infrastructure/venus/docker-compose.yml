@@ -1,0 +1,15 @@
+services:
+  minion:
+    container_name: minion
+    build:
+      context: ../../apps/minion
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    network_mode: host
+    env_file:
+      - .env
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+    volumes:
+      - ${VOLUMES_DIR:-/opt/smartworkx/volumes}/minion/config:/app/config
+      - ${VOLUMES_DIR:-/opt/smartworkx/volumes}/minion/workspace:/opt/smartworkx

@@ -1,0 +1,42 @@
+agent:
+  name: venus
+  model: claude-sonnet-4-5-20250929
+  max_tokens: 4096
+  system_prompt: >-
+    You are a helpful home automation assistant called {name}.
+    You help manage infrastructure, write code, and automate tasks.
+    Be concise and practical.
+
+mqtt:
+  broker: mars.local
+  port: 1883
+  topic_prefix: minion
+
+api:
+  host: "0.0.0.0"
+  port: 8080
+
+tools:
+  enabled:
+    - shell
+    - file_read
+    - file_write
+    - git
+  shell_timeout: 30
+  allowed_paths:
+    - /opt/smartworkx
+    - /tmp
+  git_repos:
+    - /opt/smartworkx
+
+conversation:
+  max_history: 50
+
+github:
+  repo: ""
+  poll_interval: 60
+  labels:
+    plan: "minion:plan"
+    planned: "minion:planned"
+    implement: "minion:implement"
+    done: "minion:done"
