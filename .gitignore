@@ -2,6 +2,8 @@
 *.iml
 *.bkp
 *.mp4
+__pycache__/
+*.pyc
 services/docker-compose.override.yml
 services/backups/
 volumes/
