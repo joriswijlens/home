@@ -1,0 +1,19 @@
+---
+- name: Trigger Venus backup to Scaleway
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Run venus-backup service
+      systemd:
+        name: venus-backup.service
+        state: started
+
+    - name: Show backup log
+      command: tail -20 /var/log/venus-backup.log
+      register: backup_log
+      changed_when: false
+
+    - name: Display backup log
+      debug:
+        msg: "{{ backup_log.stdout_lines }}"

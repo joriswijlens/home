@@ -1,0 +1,41 @@
+---
+- name: Restore Venus volumes from Scaleway
+  hosts: all
+  become: true
+  vars:
+    volumes_dir: /opt/smartworkx/volumes
+    remote: "scaleway:com-smartworkx-venus-backup/opt/smartworkx/volumes"
+
+  tasks:
+    - name: Check if Scaleway credentials file exists
+      stat:
+        path: /root/.scaleway-credentials
+      register: scaleway_creds
+
+    - name: Fail if Scaleway credentials are missing
+      fail:
+        msg: "/root/.scaleway-credentials not found. Cannot restore without Scaleway access."
+      when: not scaleway_creds.stat.exists
+
+    - name: Load Scaleway credentials and restore from Scaleway
+      shell: |
+        source /root/.scaleway-credentials
+        rclone sync "{{ remote }}" "{{ volumes_dir }}" \
+          --progress \
+          --transfers 4 \
+          --checkers 8 \
+          --stats-one-line \
+          --log-level INFO
+      args:
+        executable: /bin/bash
+
+    - name: Display restore result
+      debug:
+        msg: |
+          ========================================
+          Restore complete!
+          ========================================
+          Volumes restored from Scaleway to {{ volumes_dir }}.
+          You may need to restart services:
+          docker compose restart
+          ========================================

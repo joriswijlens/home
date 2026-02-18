@@ -1,0 +1,14 @@
+[Unit]
+Description=Venus AI Node Backup to Scaleway Object Storage
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/venus-backup.sh
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=venus-backup
+
+[Install]
+WantedBy=multi-user.target

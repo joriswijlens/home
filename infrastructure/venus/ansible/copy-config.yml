@@ -1,0 +1,25 @@
+---
+- hosts: all
+  become: true
+  vars:
+    volumes_dir: /opt/smartworkx/volumes
+
+  tasks:
+    - name: Read minion service configuration
+      delegate_to: localhost
+      run_once: true
+      become: false
+      set_fact:
+        minion_config: "{{ lookup('file', playbook_dir + '/../../../apps/minion/service.yml') | from_yaml }}"
+
+    - name: Copy minion configuration
+      vars:
+        config_dir: "{{ minion_config.service.config_dir }}"
+      ansible.posix.synchronize:
+        src: "{{ playbook_dir }}/../../../apps/minion/{{ config_dir }}/"
+        dest: "{{ volumes_dir }}/minion/{{ config_dir }}"
+        mode: push
+        delete: false
+        recursive: true
+        rsync_opts:
+          - "--exclude=.gitignore"
