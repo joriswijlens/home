@@ -41,6 +41,10 @@ class ToolsConfig(BaseModel):
     git_repos: list[str] = ["/opt/smartworkx"]
 
 
+class StoreConfig(BaseModel):
+    db_path: str = "/data/minion.db"
+
+
 class ConversationConfig(BaseModel):
     max_history: int = 50
 
@@ -69,6 +73,7 @@ class Settings(BaseSettings):
     tools: ToolsConfig = ToolsConfig()
     conversation: ConversationConfig = ConversationConfig()
     github: GitHubConfig = GitHubConfig()
+    store: StoreConfig = StoreConfig()
 
     @classmethod
     def settings_customise_sources(

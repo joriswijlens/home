@@ -5,9 +5,11 @@ from typing import Any
 
 import anthropic
 
+from minion.claiming import TaskClaimer
 from minion.config import Settings
 from minion.conversation import Conversation
 from minion.events import Event, EventHandler
+from minion.store import TaskStore
 from minion.tools import ToolRegistry
 
 logger = logging.getLogger(__name__)
@@ -56,48 +58,85 @@ def _slugify(title: str) -> str:
 class PlanHandler(EventHandler):
     event_types = ["github_plan"]
 
-    def __init__(self, config: Settings, tool_registry: ToolRegistry) -> None:
+    def __init__(
+        self,
+        config: Settings,
+        tool_registry: ToolRegistry,
+        store: TaskStore,
+        claimer: TaskClaimer,
+    ) -> None:
         self._client = anthropic.AsyncAnthropic(api_key=config.anthropic_api_key)
         self._model = config.agent.model
         self._max_tokens = config.agent.max_tokens
         self._tools = tool_registry
         self._github = config.github
+        self._config = config
+        self._store = store
+        self._claimer = claimer
+        self._agent_name = config.agent.name
 
     async def handle(self, event: Event) -> str | None:
         number = event.payload["number"]
         title = event.payload["title"]
         body = event.payload.get("body", "") or ""
         repo = self._github.repo
+        task_id = f"github-plan-{number}"
 
         logger.info("Planning issue #%d: %s", number, title)
 
-        conversation = Conversation(max_history=100)
-        conversation.add_user(
-            f"GitHub Issue #{number}: {title}\n\n{body}\n\n"
-            f"Explore the codebase and create a detailed implementation plan."
+        claimed = self._store.create_task(
+            task_id=task_id,
+            source="github",
+            external_ref=str(number),
+            agent=self._agent_name,
+            title=title,
         )
+        if not claimed:
+            logger.info("Task %s already claimed — skipping", task_id)
+            return None
 
-        plan = await self._run_agent(conversation)
-
-        branch = f"issue-{number}-{_slugify(title)}"
-        await self._create_branch(branch)
-
-        await self._run_gh(
-            "issue", "comment", str(number),
-            "--repo", repo,
-            "--body", f"{plan}\n\n*Branch: `{branch}`*",
-        )
+        await self._claimer.try_claim(task_id)
 
         await self._update_labels(
             number,
             remove=self._github.labels["plan"],
-            add=self._github.labels["planned"],
+            add=self._github.labels["planning"],
         )
 
-        await self._checkout_master()
+        try:
+            conversation = Conversation(max_history=100)
+            conversation.add_user(
+                f"GitHub Issue #{number}: {title}\n\n{body}\n\n"
+                f"Explore the codebase and create a detailed implementation plan."
+            )
 
-        logger.info("Plan posted for issue #%d", number)
-        return plan
+            plan = await self._run_agent(conversation)
+
+            branch = f"issue-{number}-{_slugify(title)}"
+            await self._create_branch(branch)
+
+            await self._run_gh(
+                "issue", "comment", str(number),
+                "--repo", repo,
+                "--body", f"{plan}\n\n*Branch: `{branch}`*",
+            )
+
+            await self._update_labels(
+                number,
+                remove=self._github.labels["planning"],
+                add=self._github.labels["planned"],
+            )
+
+            await self._checkout_master()
+
+            self._store.update_status(task_id, "done")
+            logger.info("Plan posted for issue #%d", number)
+            return plan
+
+        except Exception:
+            logger.exception("Planning failed for issue #%d", number)
+            self._store.update_status(task_id, "failed")
+            raise
 
     async def _run_agent(self, conversation: Conversation) -> str:
         tools = self._tools.list_tools()
@@ -155,7 +194,8 @@ class PlanHandler(EventHandler):
         await self._run_git(repo_path, "checkout", "master")
 
     def _get_repo_path(self) -> str:
-        return "/opt/smartworkx"
+        repos = self._config.tools.git_repos
+        return repos[0] if repos else "/opt/smartworkx"
 
     async def _run_git(self, repo: str, *args: str) -> str:
         proc = await asyncio.create_subprocess_exec(

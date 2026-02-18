@@ -4,11 +4,13 @@ import logging
 import uvicorn
 
 from minion.api import create_app
+from minion.claiming import TaskClaimer
 from minion.config import load_config
 from minion.events import EventDispatcher
 from minion.github import register_github
 from minion.handlers.chat import ChatHandler
 from minion.sources.mqtt import MqttEventSource
+from minion.store import TaskStore
 from minion.tools import create_registry
 
 logging.basicConfig(
@@ -22,6 +24,14 @@ async def run() -> None:
     config = load_config()
     logger.info("Starting Minion agent: %s", config.agent.name)
 
+    store = TaskStore(config.store.db_path)
+    claimer = TaskClaimer(
+        broker=config.mqtt.broker,
+        port=config.mqtt.port,
+        topic_prefix=config.mqtt.topic_prefix,
+        agent_name=config.agent.name,
+    )
+
     tool_registry = create_registry(config.tools)
     dispatcher = EventDispatcher()
 
@@ -32,9 +42,9 @@ async def run() -> None:
 
     mqtt_source: MqttEventSource | None = None
     if config.mqtt.broker:
-        mqtt_source = MqttEventSource(config.mqtt, config.agent.name)
+        mqtt_source = MqttEventSource(config.mqtt, config.agent.name, claimer)
 
-    github_source = register_github(config, dispatcher, tool_registry)
+    github_source = register_github(config, dispatcher, tool_registry, store, claimer)
 
     server = uvicorn.Server(
         uvicorn.Config(
@@ -58,6 +68,10 @@ async def run() -> None:
     else:
         logger.info("GitHub disabled (no repo configured)")
 
-    await asyncio.gather(*tasks)
+    try:
+        await asyncio.gather(*tasks)
+    finally:
+        store.close()
+        logger.info("Task store closed")
 
     logger.info("Minion agent stopped")

@@ -32,11 +32,16 @@ tools:
 conversation:
   max_history: 50
 
+store:
+  db_path: "/data/minion.db"
+
 github:
   repo: ""
   poll_interval: 60
   labels:
     plan: "minion:plan"
+    planning: "minion:planning"
     planned: "minion:planned"
     implement: "minion:implement"
+    implementing: "minion:implementing"
     done: "minion:done"

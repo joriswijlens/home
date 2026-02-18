@@ -12,4 +12,5 @@ services:
       - GITHUB_TOKEN=${GITHUB_TOKEN}
     volumes:
       - ${VOLUMES_DIR:-/opt/smartworkx/volumes}/minion/config:/app/config
+      - ${VOLUMES_DIR:-/opt/smartworkx/volumes}/minion/data:/data
       - ${VOLUMES_DIR:-/opt/smartworkx/volumes}/minion/workspace:/opt/smartworkx
