@@ -38,4 +38,4 @@
         cmd: "docker compose restart dnsmasq"
         chdir: "{{ playbook_dir }}/.."
       environment:
-        DOCKER_CONTEXT: saturn
+        DOCKER_HOST: ssh://joris@saturn.local
