@@ -1,0 +1,175 @@
+# Virtual Battery Template Sensors
+# 4 sizes × (SoC + Energy In/Out + 3 financial values) = 24 sensors
+
+- sensor:
+    # --- 10 kWh ---
+    - name: "VB 10kWh SoC"
+      unique_id: virtual_battery_10_soc
+      unit_of_measurement: "%"
+      device_class: battery
+      state_class: measurement
+      state: "{{ states('input_number.virtual_battery_10_soc') | float(0) | round(1) }}"
+
+    - name: "VB 10kWh Energy In"
+      unique_id: virtual_battery_10_energy_in
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+      state: "{{ states('input_number.virtual_battery_10_energy_in') | float(0) | round(3) }}"
+
+    - name: "VB 10kWh Energy Out"
+      unique_id: virtual_battery_10_energy_out
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+      state: "{{ states('input_number.virtual_battery_10_energy_out') | float(0) | round(3) }}"
+
+    - name: "VB 10kWh Zelfconsumptie"
+      unique_id: virtual_battery_10_savings_self
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state_class: total
+      state: "{{ states('input_number.virtual_battery_10_savings_self') | float(0) | round(2) }}"
+
+    - name: "VB 10kWh Verkoop Overschot"
+      unique_id: virtual_battery_10_revenue_export
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state_class: total_increasing
+      state: "{{ states('input_number.virtual_battery_10_revenue_export') | float(0) | round(2) }}"
+
+    - name: "VB 10kWh Arbitrage"
+      unique_id: virtual_battery_10_savings_arbitrage
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state_class: total
+      state: "{{ states('input_number.virtual_battery_10_savings_arbitrage') | float(0) | round(2) }}"
+
+    # --- 20 kWh ---
+    - name: "VB 20kWh SoC"
+      unique_id: virtual_battery_20_soc
+      unit_of_measurement: "%"
+      device_class: battery
+      state_class: measurement
+      state: "{{ states('input_number.virtual_battery_20_soc') | float(0) | round(1) }}"
+
+    - name: "VB 20kWh Energy In"
+      unique_id: virtual_battery_20_energy_in
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+      state: "{{ states('input_number.virtual_battery_20_energy_in') | float(0) | round(3) }}"
+
+    - name: "VB 20kWh Energy Out"
+      unique_id: virtual_battery_20_energy_out
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+      state: "{{ states('input_number.virtual_battery_20_energy_out') | float(0) | round(3) }}"
+
+    - name: "VB 20kWh Zelfconsumptie"
+      unique_id: virtual_battery_20_savings_self
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state_class: total
+      state: "{{ states('input_number.virtual_battery_20_savings_self') | float(0) | round(2) }}"
+
+    - name: "VB 20kWh Verkoop Overschot"
+      unique_id: virtual_battery_20_revenue_export
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state_class: total_increasing
+      state: "{{ states('input_number.virtual_battery_20_revenue_export') | float(0) | round(2) }}"
+
+    - name: "VB 20kWh Arbitrage"
+      unique_id: virtual_battery_20_savings_arbitrage
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state_class: total
+      state: "{{ states('input_number.virtual_battery_20_savings_arbitrage') | float(0) | round(2) }}"
+
+    # --- 30 kWh ---
+    - name: "VB 30kWh SoC"
+      unique_id: virtual_battery_30_soc
+      unit_of_measurement: "%"
+      device_class: battery
+      state_class: measurement
+      state: "{{ states('input_number.virtual_battery_30_soc') | float(0) | round(1) }}"
+
+    - name: "VB 30kWh Energy In"
+      unique_id: virtual_battery_30_energy_in
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+      state: "{{ states('input_number.virtual_battery_30_energy_in') | float(0) | round(3) }}"
+
+    - name: "VB 30kWh Energy Out"
+      unique_id: virtual_battery_30_energy_out
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+      state: "{{ states('input_number.virtual_battery_30_energy_out') | float(0) | round(3) }}"
+
+    - name: "VB 30kWh Zelfconsumptie"
+      unique_id: virtual_battery_30_savings_self
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state_class: total
+      state: "{{ states('input_number.virtual_battery_30_savings_self') | float(0) | round(2) }}"
+
+    - name: "VB 30kWh Verkoop Overschot"
+      unique_id: virtual_battery_30_revenue_export
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state_class: total_increasing
+      state: "{{ states('input_number.virtual_battery_30_revenue_export') | float(0) | round(2) }}"
+
+    - name: "VB 30kWh Arbitrage"
+      unique_id: virtual_battery_30_savings_arbitrage
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state_class: total
+      state: "{{ states('input_number.virtual_battery_30_savings_arbitrage') | float(0) | round(2) }}"
+
+    # --- 40 kWh ---
+    - name: "VB 40kWh SoC"
+      unique_id: virtual_battery_40_soc
+      unit_of_measurement: "%"
+      device_class: battery
+      state_class: measurement
+      state: "{{ states('input_number.virtual_battery_40_soc') | float(0) | round(1) }}"
+
+    - name: "VB 40kWh Energy In"
+      unique_id: virtual_battery_40_energy_in
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+      state: "{{ states('input_number.virtual_battery_40_energy_in') | float(0) | round(3) }}"
+
+    - name: "VB 40kWh Energy Out"
+      unique_id: virtual_battery_40_energy_out
+      unit_of_measurement: "kWh"
+      device_class: energy
+      state_class: total_increasing
+      state: "{{ states('input_number.virtual_battery_40_energy_out') | float(0) | round(3) }}"
+
+    - name: "VB 40kWh Zelfconsumptie"
+      unique_id: virtual_battery_40_savings_self
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state_class: total
+      state: "{{ states('input_number.virtual_battery_40_savings_self') | float(0) | round(2) }}"
+
+    - name: "VB 40kWh Verkoop Overschot"
+      unique_id: virtual_battery_40_revenue_export
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state_class: total_increasing
+      state: "{{ states('input_number.virtual_battery_40_revenue_export') | float(0) | round(2) }}"
+
+    - name: "VB 40kWh Arbitrage"
+      unique_id: virtual_battery_40_savings_arbitrage
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state_class: total
+      state: "{{ states('input_number.virtual_battery_40_savings_arbitrage') | float(0) | round(2) }}"

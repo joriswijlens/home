@@ -8,3 +8,12 @@ automation ui: !include automations.yaml
 script: !include_dir_merge_named scripts
 scene: !include_dir_merge_list scenes
 template: !include_dir_merge_list templates
+
+lovelace:
+  mode: storage
+  dashboards:
+    virtual-battery:
+      mode: yaml
+      title: "Virtuele Batterij"
+      icon: mdi:battery-charging
+      filename: dashboards/virtual_battery.yaml

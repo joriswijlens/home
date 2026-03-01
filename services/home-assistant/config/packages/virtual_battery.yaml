@@ -1,0 +1,473 @@
+# Virtual Battery Simulation Package
+#
+# Simulates 4 battery sizes (10, 20, 30, 40 kWh) in parallel.
+# Includes a virtual EV that consumes 5 kWh/day from solar excess BEFORE
+# the battery gets it, reducing the battery's business case.
+#
+# Tracks 3 separate financial values per battery:
+#   1. Zelfconsumptie: structural savings at flat rate (won't change with market)
+#   2. Verkoop overschot: revenue from solar excess that didn't fit in battery
+#   3. Arbitrage day-ahead: extra value from dynamic vs flat pricing
+#
+# Uses Slimmelezer (grid), Enphase Envoy (solar), Zonneplan (dynamic tariffs).
+# Does NOT account for saldering (net metering).
+
+input_number:
+  # Shared battery parameters
+  virtual_battery_max_charge_rate:
+    name: "Virtual Battery Max Charge/Discharge Rate"
+    unit_of_measurement: "kW"
+    min: 0.5
+    max: 15
+    step: 0.5
+    initial: 5
+    icon: mdi:lightning-bolt
+
+  virtual_battery_min_soc:
+    name: "Virtual Battery Minimum SoC"
+    unit_of_measurement: "%"
+    min: 0
+    max: 50
+    step: 5
+    initial: 10
+    icon: mdi:battery-low
+
+  # Flat reference price (for isolating self-consumption value from arbitrage)
+  virtual_battery_flat_elec_price:
+    name: "Reference Flat Electricity Price"
+    unit_of_measurement: "EUR/kWh"
+    min: 0.01
+    max: 1.00
+    step: 0.01
+    initial: 0.25
+    icon: mdi:currency-eur
+
+  virtual_battery_flat_feedin_price:
+    name: "Reference Flat Feed-in Price"
+    unit_of_measurement: "EUR/kWh"
+    min: 0.00
+    max: 0.50
+    step: 0.01
+    initial: 0.07
+    icon: mdi:currency-eur
+
+  # Virtual EV - consumes solar excess before battery
+  virtual_ev_daily_kwh:
+    name: "Virtual EV Daily Charge"
+    unit_of_measurement: "kWh"
+    min: 0
+    max: 50
+    step: 1
+    initial: 5
+    icon: mdi:car-electric
+
+  virtual_ev_consumed_today:
+    name: "Virtual EV Consumed Today"
+    unit_of_measurement: "kWh"
+    min: 0
+    max: 50
+    step: 0.001
+    initial: 0
+
+  # --- 10 kWh state ---
+  virtual_battery_10_soc:
+    name: "VB 10kWh SoC"
+    min: 0
+    max: 100
+    step: 0.01
+    initial: 0
+  virtual_battery_10_energy_in:
+    name: "VB 10kWh Energy In"
+    min: 0
+    max: 9999999
+    step: 0.001
+    initial: 0
+  virtual_battery_10_energy_out:
+    name: "VB 10kWh Energy Out"
+    min: 0
+    max: 9999999
+    step: 0.001
+    initial: 0
+  virtual_battery_10_savings_self:
+    name: "VB 10kWh Zelfconsumptie"
+    min: -9999999
+    max: 9999999
+    step: 0.001
+    initial: 0
+  virtual_battery_10_revenue_export:
+    name: "VB 10kWh Verkoop Overschot"
+    min: 0
+    max: 9999999
+    step: 0.001
+    initial: 0
+  virtual_battery_10_savings_arbitrage:
+    name: "VB 10kWh Arbitrage"
+    min: -9999999
+    max: 9999999
+    step: 0.001
+    initial: 0
+
+  # --- 20 kWh state ---
+  virtual_battery_20_soc:
+    name: "VB 20kWh SoC"
+    min: 0
+    max: 100
+    step: 0.01
+    initial: 0
+  virtual_battery_20_energy_in:
+    name: "VB 20kWh Energy In"
+    min: 0
+    max: 9999999
+    step: 0.001
+    initial: 0
+  virtual_battery_20_energy_out:
+    name: "VB 20kWh Energy Out"
+    min: 0
+    max: 9999999
+    step: 0.001
+    initial: 0
+  virtual_battery_20_savings_self:
+    name: "VB 20kWh Zelfconsumptie"
+    min: -9999999
+    max: 9999999
+    step: 0.001
+    initial: 0
+  virtual_battery_20_revenue_export:
+    name: "VB 20kWh Verkoop Overschot"
+    min: 0
+    max: 9999999
+    step: 0.001
+    initial: 0
+  virtual_battery_20_savings_arbitrage:
+    name: "VB 20kWh Arbitrage"
+    min: -9999999
+    max: 9999999
+    step: 0.001
+    initial: 0
+
+  # --- 30 kWh state ---
+  virtual_battery_30_soc:
+    name: "VB 30kWh SoC"
+    min: 0
+    max: 100
+    step: 0.01
+    initial: 0
+  virtual_battery_30_energy_in:
+    name: "VB 30kWh Energy In"
+    min: 0
+    max: 9999999
+    step: 0.001
+    initial: 0
+  virtual_battery_30_energy_out:
+    name: "VB 30kWh Energy Out"
+    min: 0
+    max: 9999999
+    step: 0.001
+    initial: 0
+  virtual_battery_30_savings_self:
+    name: "VB 30kWh Zelfconsumptie"
+    min: -9999999
+    max: 9999999
+    step: 0.001
+    initial: 0
+  virtual_battery_30_revenue_export:
+    name: "VB 30kWh Verkoop Overschot"
+    min: 0
+    max: 9999999
+    step: 0.001
+    initial: 0
+  virtual_battery_30_savings_arbitrage:
+    name: "VB 30kWh Arbitrage"
+    min: -9999999
+    max: 9999999
+    step: 0.001
+    initial: 0
+
+  # --- 40 kWh state ---
+  virtual_battery_40_soc:
+    name: "VB 40kWh SoC"
+    min: 0
+    max: 100
+    step: 0.01
+    initial: 0
+  virtual_battery_40_energy_in:
+    name: "VB 40kWh Energy In"
+    min: 0
+    max: 9999999
+    step: 0.001
+    initial: 0
+  virtual_battery_40_energy_out:
+    name: "VB 40kWh Energy Out"
+    min: 0
+    max: 9999999
+    step: 0.001
+    initial: 0
+  virtual_battery_40_savings_self:
+    name: "VB 40kWh Zelfconsumptie"
+    min: -9999999
+    max: 9999999
+    step: 0.001
+    initial: 0
+  virtual_battery_40_revenue_export:
+    name: "VB 40kWh Verkoop Overschot"
+    min: 0
+    max: 9999999
+    step: 0.001
+    initial: 0
+  virtual_battery_40_savings_arbitrage:
+    name: "VB 40kWh Arbitrage"
+    min: -9999999
+    max: 9999999
+    step: 0.001
+    initial: 0
+
+automation:
+  - id: virtual_ev_daily_reset
+    alias: "Virtual EV - Daily reset"
+    description: "Reset EV consumed counter at midnight"
+    trigger:
+      - platform: time
+        at: "00:00:00"
+    action:
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.virtual_ev_consumed_today
+        data:
+          value: 0
+
+  - id: virtual_battery_simulation
+    alias: "Virtual Battery - Simulate all batteries"
+    description: "Runs every minute to simulate 4 battery sizes with 3 value streams"
+    mode: single
+    trigger:
+      - platform: time_pattern
+        minutes: "/1"
+    action:
+      - variables:
+          # Grid power (kW)
+          raw_export_power: "{{ states('sensor.slimmelezer_power_produced') | float(0) }}"
+          import_power: "{{ states('sensor.slimmelezer_power_consumed') | float(0) }}"
+          # Shared params
+          max_rate: "{{ states('input_number.virtual_battery_max_charge_rate') | float(5) }}"
+          min_soc: "{{ states('input_number.virtual_battery_min_soc') | float(10) }}"
+          # Dynamic Zonneplan tariff
+          dyn_elec: "{{ states('sensor.zonneplan_current_electricity_tariff') | float(0.25) }}"
+          dyn_feedin: "{{ states('sensor.zonneplan_current_electricity_tariff') | float(0.25) }}"
+          # Flat reference tariff
+          flat_elec: "{{ states('input_number.virtual_battery_flat_elec_price') | float(0.25) }}"
+          flat_feedin: "{{ states('input_number.virtual_battery_flat_feedin_price') | float(0.07) }}"
+          # Time step (1 min in hours)
+          dt: "{{ 1 / 60 }}"
+          # Virtual EV - charges from solar excess first
+          ev_daily: "{{ states('input_number.virtual_ev_daily_kwh') | float(5) }}"
+          ev_consumed: "{{ states('input_number.virtual_ev_consumed_today') | float(0) }}"
+      - variables:
+          ev_remaining: "{{ [ev_daily - ev_consumed, 0] | max }}"
+          ev_charge_power: "{% if raw_export_power > 0 and ev_remaining > 0 %}{{ [raw_export_power, ev_remaining / dt] | min }}{% else %}0{% endif %}"
+          # Export power AFTER EV takes its share
+          export_power: "{{ [raw_export_power - (ev_charge_power | float), 0] | max }}"
+      # Update EV consumed counter
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.virtual_ev_consumed_today
+        data:
+          value: "{{ ev_consumed + (ev_charge_power | float) * dt }}"
+
+      # ===== 10 kWh =====
+      - variables:
+          cap: 10
+          soc: "{{ states('input_number.virtual_battery_10_soc') | float(0) }}"
+      - variables:
+          headroom: "{{ (100 - soc) / 100 * cap }}"
+          above_min: "{{ [(soc - min_soc) / 100 * cap, 0] | max }}"
+      - variables:
+          cp: "{% if export_power > 0 and soc < 100 %}{{ [export_power, max_rate, headroom / dt] | min }}{% else %}0{% endif %}"
+          dp: "{% if import_power > 0 and soc > min_soc %}{{ [import_power, max_rate, above_min / dt] | min }}{% else %}0{% endif %}"
+      - variables:
+          ce: "{{ (cp | float) * dt }}"
+          de: "{{ (dp | float) * dt }}"
+          excess: "{{ (export_power - (cp | float)) * dt }}"
+          new_soc: "{{ [[soc + (ce / cap * 100) - (de / cap * 100), 0] | max, 100] | min }}"
+          # 1. Zelfconsumptie at flat rate
+          val_self: "{{ de * flat_elec - ce * flat_feedin }}"
+          # 2. Verkoop overschot at dynamic rate
+          val_export: "{{ [excess, 0] | max * dyn_feedin }}"
+          # 3. Arbitrage = dynamic total - flat total
+          val_arb: "{{ (de * dyn_elec - ce * dyn_feedin) - (de * flat_elec - ce * flat_feedin) }}"
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.virtual_battery_10_soc
+        data:
+          value: "{{ new_soc }}"
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.virtual_battery_10_energy_in
+        data:
+          value: "{{ states('input_number.virtual_battery_10_energy_in') | float(0) + ce | float }}"
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.virtual_battery_10_energy_out
+        data:
+          value: "{{ states('input_number.virtual_battery_10_energy_out') | float(0) + de | float }}"
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.virtual_battery_10_savings_self
+        data:
+          value: "{{ states('input_number.virtual_battery_10_savings_self') | float(0) + val_self | float }}"
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.virtual_battery_10_revenue_export
+        data:
+          value: "{{ states('input_number.virtual_battery_10_revenue_export') | float(0) + val_export | float }}"
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.virtual_battery_10_savings_arbitrage
+        data:
+          value: "{{ states('input_number.virtual_battery_10_savings_arbitrage') | float(0) + val_arb | float }}"
+
+      # ===== 20 kWh =====
+      - variables:
+          cap: 20
+          soc: "{{ states('input_number.virtual_battery_20_soc') | float(0) }}"
+      - variables:
+          headroom: "{{ (100 - soc) / 100 * cap }}"
+          above_min: "{{ [(soc - min_soc) / 100 * cap, 0] | max }}"
+      - variables:
+          cp: "{% if export_power > 0 and soc < 100 %}{{ [export_power, max_rate, headroom / dt] | min }}{% else %}0{% endif %}"
+          dp: "{% if import_power > 0 and soc > min_soc %}{{ [import_power, max_rate, above_min / dt] | min }}{% else %}0{% endif %}"
+      - variables:
+          ce: "{{ (cp | float) * dt }}"
+          de: "{{ (dp | float) * dt }}"
+          excess: "{{ (export_power - (cp | float)) * dt }}"
+          new_soc: "{{ [[soc + (ce / cap * 100) - (de / cap * 100), 0] | max, 100] | min }}"
+          val_self: "{{ de * flat_elec - ce * flat_feedin }}"
+          val_export: "{{ [excess, 0] | max * dyn_feedin }}"
+          val_arb: "{{ (de * dyn_elec - ce * dyn_feedin) - (de * flat_elec - ce * flat_feedin) }}"
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.virtual_battery_20_soc
+        data:
+          value: "{{ new_soc }}"
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.virtual_battery_20_energy_in
+        data:
+          value: "{{ states('input_number.virtual_battery_20_energy_in') | float(0) + ce | float }}"
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.virtual_battery_20_energy_out
+        data:
+          value: "{{ states('input_number.virtual_battery_20_energy_out') | float(0) + de | float }}"
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.virtual_battery_20_savings_self
+        data:
+          value: "{{ states('input_number.virtual_battery_20_savings_self') | float(0) + val_self | float }}"
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.virtual_battery_20_revenue_export
+        data:
+          value: "{{ states('input_number.virtual_battery_20_revenue_export') | float(0) + val_export | float }}"
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.virtual_battery_20_savings_arbitrage
+        data:
+          value: "{{ states('input_number.virtual_battery_20_savings_arbitrage') | float(0) + val_arb | float }}"
+
+      # ===== 30 kWh =====
+      - variables:
+          cap: 30
+          soc: "{{ states('input_number.virtual_battery_30_soc') | float(0) }}"
+      - variables:
+          headroom: "{{ (100 - soc) / 100 * cap }}"
+          above_min: "{{ [(soc - min_soc) / 100 * cap, 0] | max }}"
+      - variables:
+          cp: "{% if export_power > 0 and soc < 100 %}{{ [export_power, max_rate, headroom / dt] | min }}{% else %}0{% endif %}"
+          dp: "{% if import_power > 0 and soc > min_soc %}{{ [import_power, max_rate, above_min / dt] | min }}{% else %}0{% endif %}"
+      - variables:
+          ce: "{{ (cp | float) * dt }}"
+          de: "{{ (dp | float) * dt }}"
+          excess: "{{ (export_power - (cp | float)) * dt }}"
+          new_soc: "{{ [[soc + (ce / cap * 100) - (de / cap * 100), 0] | max, 100] | min }}"
+          val_self: "{{ de * flat_elec - ce * flat_feedin }}"
+          val_export: "{{ [excess, 0] | max * dyn_feedin }}"
+          val_arb: "{{ (de * dyn_elec - ce * dyn_feedin) - (de * flat_elec - ce * flat_feedin) }}"
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.virtual_battery_30_soc
+        data:
+          value: "{{ new_soc }}"
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.virtual_battery_30_energy_in
+        data:
+          value: "{{ states('input_number.virtual_battery_30_energy_in') | float(0) + ce | float }}"
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.virtual_battery_30_energy_out
+        data:
+          value: "{{ states('input_number.virtual_battery_30_energy_out') | float(0) + de | float }}"
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.virtual_battery_30_savings_self
+        data:
+          value: "{{ states('input_number.virtual_battery_30_savings_self') | float(0) + val_self | float }}"
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.virtual_battery_30_revenue_export
+        data:
+          value: "{{ states('input_number.virtual_battery_30_revenue_export') | float(0) + val_export | float }}"
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.virtual_battery_30_savings_arbitrage
+        data:
+          value: "{{ states('input_number.virtual_battery_30_savings_arbitrage') | float(0) + val_arb | float }}"
+
+      # ===== 40 kWh =====
+      - variables:
+          cap: 40
+          soc: "{{ states('input_number.virtual_battery_40_soc') | float(0) }}"
+      - variables:
+          headroom: "{{ (100 - soc) / 100 * cap }}"
+          above_min: "{{ [(soc - min_soc) / 100 * cap, 0] | max }}"
+      - variables:
+          cp: "{% if export_power > 0 and soc < 100 %}{{ [export_power, max_rate, headroom / dt] | min }}{% else %}0{% endif %}"
+          dp: "{% if import_power > 0 and soc > min_soc %}{{ [import_power, max_rate, above_min / dt] | min }}{% else %}0{% endif %}"
+      - variables:
+          ce: "{{ (cp | float) * dt }}"
+          de: "{{ (dp | float) * dt }}"
+          excess: "{{ (export_power - (cp | float)) * dt }}"
+          new_soc: "{{ [[soc + (ce / cap * 100) - (de / cap * 100), 0] | max, 100] | min }}"
+          val_self: "{{ de * flat_elec - ce * flat_feedin }}"
+          val_export: "{{ [excess, 0] | max * dyn_feedin }}"
+          val_arb: "{{ (de * dyn_elec - ce * dyn_feedin) - (de * flat_elec - ce * flat_feedin) }}"
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.virtual_battery_40_soc
+        data:
+          value: "{{ new_soc }}"
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.virtual_battery_40_energy_in
+        data:
+          value: "{{ states('input_number.virtual_battery_40_energy_in') | float(0) + ce | float }}"
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.virtual_battery_40_energy_out
+        data:
+          value: "{{ states('input_number.virtual_battery_40_energy_out') | float(0) + de | float }}"
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.virtual_battery_40_savings_self
+        data:
+          value: "{{ states('input_number.virtual_battery_40_savings_self') | float(0) + val_self | float }}"
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.virtual_battery_40_revenue_export
+        data:
+          value: "{{ states('input_number.virtual_battery_40_revenue_export') | float(0) + val_export | float }}"
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.virtual_battery_40_savings_arbitrage
+        data:
+          value: "{{ states('input_number.virtual_battery_40_savings_arbitrage') | float(0) + val_arb | float }}"
