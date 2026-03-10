@@ -1,32 +1,28 @@
 - alias: Ventilator badkamer aan
-  description: ''
+  description: "Schakel ventilator in bij snelle stijging luchtvochtigheid (douche)"
   triggers:
-  - type: humidity
-    device_id: af41a9cd512a89fab8feee8d028a4908
-    entity_id: 153477c2d061ea13adbfed29bccae9e9
-    domain: sensor
-    trigger: device
-    above: 75
+    - trigger: numeric_state
+      entity_id: sensor.badkamer_luchtvochtigheid_verandering
+      above: 0.5
   conditions: []
   actions:
-  - type: turn_on
-    device_id: f144f9445ca97b1480eeb7b06476a8b9
-    entity_id: 6d110bf3aad4a4bac28d3b819d53e3b3
-    domain: switch
+    - type: turn_on
+      device_id: f144f9445ca97b1480eeb7b06476a8b9
+      entity_id: 6d110bf3aad4a4bac28d3b819d53e3b3
+      domain: switch
   mode: single
 - alias: Ventilator badkamer uit
-  description: ''
+  description: "Schakel ventilator uit wanneer daling is gestopt na minimaal 10 minuten"
   triggers:
-  - type: humidity
-    device_id: af41a9cd512a89fab8feee8d028a4908
-    entity_id: 153477c2d061ea13adbfed29bccae9e9
-    domain: sensor
-    trigger: device
-    below: 65
+    - trigger: numeric_state
+      entity_id: sensor.badkamer_luchtvochtigheid_verandering
+      above: -0.1
+      for:
+        minutes: 10
   conditions: []
   actions:
-  - type: turn_off
-    device_id: f144f9445ca97b1480eeb7b06476a8b9
-    entity_id: 6d110bf3aad4a4bac28d3b819d53e3b3
-    domain: switch
+    - type: turn_off
+      device_id: f144f9445ca97b1480eeb7b06476a8b9
+      entity_id: 6d110bf3aad4a4bac28d3b819d53e3b3
+      domain: switch
   mode: single
