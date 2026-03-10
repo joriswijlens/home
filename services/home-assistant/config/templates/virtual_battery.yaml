@@ -35,7 +35,7 @@
       unique_id: virtual_battery_10_revenue_export
       unit_of_measurement: "EUR"
       device_class: monetary
-      state_class: total_increasing
+      state_class: total
       state: "{{ states('input_number.virtual_battery_10_revenue_export') | float(0) | round(2) }}"
 
     - name: "VB 10kWh Arbitrage"
@@ -78,7 +78,7 @@
       unique_id: virtual_battery_20_revenue_export
       unit_of_measurement: "EUR"
       device_class: monetary
-      state_class: total_increasing
+      state_class: total
       state: "{{ states('input_number.virtual_battery_20_revenue_export') | float(0) | round(2) }}"
 
     - name: "VB 20kWh Arbitrage"
@@ -121,7 +121,7 @@
       unique_id: virtual_battery_30_revenue_export
       unit_of_measurement: "EUR"
       device_class: monetary
-      state_class: total_increasing
+      state_class: total
       state: "{{ states('input_number.virtual_battery_30_revenue_export') | float(0) | round(2) }}"
 
     - name: "VB 30kWh Arbitrage"
@@ -164,7 +164,7 @@
       unique_id: virtual_battery_40_revenue_export
       unit_of_measurement: "EUR"
       device_class: monetary
-      state_class: total_increasing
+      state_class: total
       state: "{{ states('input_number.virtual_battery_40_revenue_export') | float(0) | round(2) }}"
 
     - name: "VB 40kWh Arbitrage"

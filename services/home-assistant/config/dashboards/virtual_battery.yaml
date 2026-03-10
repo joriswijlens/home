@@ -2,10 +2,13 @@ title: "Virtuele Batterij"
 views:
   - title: Overzicht
     type: sections
+    max_columns: 2
     sections:
-      # --- Status ---
       - type: grid
         cards:
+          - type: heading
+            heading: "Status"
+            heading_style: subtitle
           - type: entity
             entity: sensor.zonneplan_current_electricity_tariff
             name: "Zonneplan Tarief"
@@ -20,11 +23,9 @@ views:
           - type: entity
             entity: input_number.virtual_ev_consumed_today
             name: "EV Geladen Vandaag"
-
-      # --- SoC Gauges ---
-      - type: grid
-        title: "State of Charge"
-        cards:
+          - type: heading
+            heading: "Batterij Status"
+            heading_style: subtitle
           - type: gauge
             entity: sensor.vb_10kwh_soc
             name: "10 kWh"
@@ -34,6 +35,9 @@ views:
               green: 50
               yellow: 20
               red: 0
+            layout_options:
+              grid_columns: 2
+              grid_rows: 2
           - type: gauge
             entity: sensor.vb_20kwh_soc
             name: "20 kWh"
@@ -43,6 +47,9 @@ views:
               green: 50
               yellow: 20
               red: 0
+            layout_options:
+              grid_columns: 2
+              grid_rows: 2
           - type: gauge
             entity: sensor.vb_30kwh_soc
             name: "30 kWh"
@@ -52,6 +59,9 @@ views:
               green: 50
               yellow: 20
               red: 0
+            layout_options:
+              grid_columns: 2
+              grid_rows: 2
           - type: gauge
             entity: sensor.vb_40kwh_soc
             name: "40 kWh"
@@ -61,11 +71,15 @@ views:
               green: 50
               yellow: 20
               red: 0
+            layout_options:
+              grid_columns: 2
+              grid_rows: 2
 
-      # --- Zelfconsumptie Besparing ---
       - type: grid
-        title: "Zelfconsumptie Besparing (vast tarief)"
         cards:
+          - type: heading
+            heading: "Zelfconsumptie (dynamisch)"
+            heading_style: subtitle
           - type: statistic
             entity: sensor.vb_10kwh_zelfconsumptie
             name: "10 kWh"
@@ -94,11 +108,9 @@ views:
               calendar:
                 period: month
             stat_type: change
-
-      # --- Verkoop Overschot ---
-      - type: grid
-        title: "Verkoop Overschot (dynamisch tarief)"
-        cards:
+          - type: heading
+            heading: "Verkoop Overschot (dynamisch)"
+            heading_style: subtitle
           - type: statistic
             entity: sensor.vb_10kwh_verkoop_overschot
             name: "10 kWh"
@@ -128,42 +140,8 @@ views:
                 period: month
             stat_type: change
 
-      # --- Arbitrage Day-Ahead ---
       - type: grid
-        title: "Arbitrage Bonus (dynamisch vs vast)"
-        cards:
-          - type: statistic
-            entity: sensor.vb_10kwh_arbitrage
-            name: "10 kWh"
-            period:
-              calendar:
-                period: month
-            stat_type: change
-          - type: statistic
-            entity: sensor.vb_20kwh_arbitrage
-            name: "20 kWh"
-            period:
-              calendar:
-                period: month
-            stat_type: change
-          - type: statistic
-            entity: sensor.vb_30kwh_arbitrage
-            name: "30 kWh"
-            period:
-              calendar:
-                period: month
-            stat_type: change
-          - type: statistic
-            entity: sensor.vb_40kwh_arbitrage
-            name: "40 kWh"
-            period:
-              calendar:
-                period: month
-            stat_type: change
-
-      # --- Cumulatieve Totalen ---
-      - type: grid
-        title: "Cumulatief Totaal"
+        title: "Cumulatief 10 kWh"
         cards:
           - type: entities
             title: "10 kWh"
@@ -171,54 +149,57 @@ views:
               - entity: sensor.vb_10kwh_zelfconsumptie
                 name: "Zelfconsumptie"
               - entity: sensor.vb_10kwh_verkoop_overschot
-                name: "Verkoop overschot"
-              - entity: sensor.vb_10kwh_arbitrage
-                name: "Arbitrage"
+                name: "Verkoop"
               - entity: sensor.vb_10kwh_energy_in
                 name: "Energy In"
               - entity: sensor.vb_10kwh_energy_out
                 name: "Energy Out"
+
+      - type: grid
+        title: "Cumulatief 20 kWh"
+        cards:
           - type: entities
             title: "20 kWh"
             entities:
               - entity: sensor.vb_20kwh_zelfconsumptie
                 name: "Zelfconsumptie"
               - entity: sensor.vb_20kwh_verkoop_overschot
-                name: "Verkoop overschot"
-              - entity: sensor.vb_20kwh_arbitrage
-                name: "Arbitrage"
+                name: "Verkoop"
               - entity: sensor.vb_20kwh_energy_in
                 name: "Energy In"
               - entity: sensor.vb_20kwh_energy_out
                 name: "Energy Out"
+
+      - type: grid
+        title: "Cumulatief 30 kWh"
+        cards:
           - type: entities
             title: "30 kWh"
             entities:
               - entity: sensor.vb_30kwh_zelfconsumptie
                 name: "Zelfconsumptie"
               - entity: sensor.vb_30kwh_verkoop_overschot
-                name: "Verkoop overschot"
-              - entity: sensor.vb_30kwh_arbitrage
-                name: "Arbitrage"
+                name: "Verkoop"
               - entity: sensor.vb_30kwh_energy_in
                 name: "Energy In"
               - entity: sensor.vb_30kwh_energy_out
                 name: "Energy Out"
+
+      - type: grid
+        title: "Cumulatief 40 kWh"
+        cards:
           - type: entities
             title: "40 kWh"
             entities:
               - entity: sensor.vb_40kwh_zelfconsumptie
                 name: "Zelfconsumptie"
               - entity: sensor.vb_40kwh_verkoop_overschot
-                name: "Verkoop overschot"
-              - entity: sensor.vb_40kwh_arbitrage
-                name: "Arbitrage"
+                name: "Verkoop"
               - entity: sensor.vb_40kwh_energy_in
                 name: "Energy In"
               - entity: sensor.vb_40kwh_energy_out
                 name: "Energy Out"
 
-      # --- Parameters ---
       - type: grid
         title: "Instellingen"
         cards:
@@ -228,9 +209,87 @@ views:
                 name: "Max Charge Rate"
               - entity: input_number.virtual_battery_min_soc
                 name: "Min SoC"
-              - entity: input_number.virtual_battery_flat_elec_price
-                name: "Vast stroomtarief"
-              - entity: input_number.virtual_battery_flat_feedin_price
-                name: "Vast feedin tarief"
               - entity: input_number.virtual_ev_daily_kwh
                 name: "EV Dagelijks laden"
+
+  - title: Grafieken
+    icon: mdi:chart-line
+    cards:
+      - type: custom:apexcharts-card
+        header:
+          title: "Zelfconsumptie over tijd"
+          show: true
+        graph_span: 30d
+        span:
+          end: day
+        apex_config:
+          chart:
+            toolbar:
+              show: true
+          tooltip:
+            x:
+              format: "dd MMM yyyy"
+        series:
+          - entity: sensor.vb_10kwh_zelfconsumptie
+            name: "10 kWh"
+            type: line
+            statistics:
+              type: state
+              period: day
+          - entity: sensor.vb_20kwh_zelfconsumptie
+            name: "20 kWh"
+            type: line
+            statistics:
+              type: state
+              period: day
+          - entity: sensor.vb_30kwh_zelfconsumptie
+            name: "30 kWh"
+            type: line
+            statistics:
+              type: state
+              period: day
+          - entity: sensor.vb_40kwh_zelfconsumptie
+            name: "40 kWh"
+            type: line
+            statistics:
+              type: state
+              period: day
+      - type: custom:apexcharts-card
+        header:
+          title: "Verkoop overschot over tijd"
+          show: true
+        graph_span: 30d
+        span:
+          end: day
+        apex_config:
+          chart:
+            toolbar:
+              show: true
+          tooltip:
+            x:
+              format: "dd MMM yyyy"
+        series:
+          - entity: sensor.vb_10kwh_verkoop_overschot
+            name: "10 kWh"
+            type: line
+            statistics:
+              type: state
+              period: day
+          - entity: sensor.vb_20kwh_verkoop_overschot
+            name: "20 kWh"
+            type: line
+            statistics:
+              type: state
+              period: day
+          - entity: sensor.vb_30kwh_verkoop_overschot
+            name: "30 kWh"
+            type: line
+            statistics:
+              type: state
+              period: day
+          - entity: sensor.vb_40kwh_verkoop_overschot
+            name: "40 kWh"
+            type: line
+            statistics:
+              type: state
+              period: day
