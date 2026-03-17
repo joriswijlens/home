@@ -4,4 +4,4 @@ sensor:
     name: "Badkamer luchtvochtigheid verandering"
     round: 2
     unit_time: min
-    time_window: "00:05:00"
+    time_window: "00:03:00"
