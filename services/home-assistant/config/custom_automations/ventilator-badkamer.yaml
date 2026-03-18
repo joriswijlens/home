@@ -12,19 +12,19 @@
       domain: switch
   mode: single
 - alias: Ventilator badkamer uit
-  description: "Schakel ventilator uit 15 min nadat de vochtigheidsstijging stopt"
+  description: "Schakel ventilator uit wanneer daling stopt na minstens 10 min"
   triggers:
     - trigger: numeric_state
       entity_id: sensor.badkamer_luchtvochtigheid_verandering
-      below: 0.1
-      for:
-        minutes: 15
+      above: -0.1
   conditions:
     - condition: device
       device_id: f144f9445ca97b1480eeb7b06476a8b9
       entity_id: 6d110bf3aad4a4bac28d3b819d53e3b3
       domain: switch
       type: is_on
+      for:
+        minutes: 10
   actions:
     - type: turn_off
       device_id: f144f9445ca97b1480eeb7b06476a8b9
