@@ -20,8 +20,6 @@
 
 - name: Backup existing netplan configs
   shell: cp /etc/netplan/*.yaml /etc/netplan/backup/backup-$(date +%Y%m%d-%H%M%S)/ 2>/dev/null || true
-  args:
-    warn: false
   changed_when: false
 
 - name: Check if cloud-init netplan config exists
@@ -105,8 +103,6 @@
   shell: |
     mkdir -p /etc/systemd/network/backup
     cp /etc/systemd/network/10-* /etc/systemd/network/backup/ 2>/dev/null || true
-  args:
-    warn: false
   changed_when: false
 
 - name: Remove old systemd network config for eth0

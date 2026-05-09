@@ -37,7 +37,75 @@ services:
       - --storage.tsdb.retention.size=50GB
       - --web.enable-remote-write-receiver
 
+  # Shared Postgres instance for Jupiter services. Each service that needs an
+  # RDB creates its own database + role here (see ./postgres-init/). Do NOT
+  # spin up a per-service Postgres container.
+  postgres:
+    container_name: postgres
+    image: postgres:16-alpine
+    restart: unless-stopped
+    # Loopback only — services on the host reach Postgres via 127.0.0.1:5432.
+    # Not exposed on LAN or WireGuard.
+    ports:
+      - "127.0.0.1:5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+      POSTGRES_DB: postgres
+      PAPERCLIP_DB_PASSWORD: ${PAPERCLIP_DB_PASSWORD:?PAPERCLIP_DB_PASSWORD must be set in .env}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  paperclip:
+    container_name: paperclip
+    # Multi-arch image (amd64 + arm64) published from the upstream
+    # github.com/paperclipai/paperclip Docker workflow. The Paperclip docs
+    # only show `docker build`, but their CI does push to ghcr.io.
+    # NB: ghcr.io/paperclipinc/paperclip is Paperclip Inc.'s managed-hosting
+    # fork — the README explicitly says it is not intended for self-hosting.
+    image: ${PAPERCLIP_IMAGE:-ghcr.io/paperclipai/paperclip:latest}
+    restart: unless-stopped
+    # Host networking so paperclip is reachable on both the LAN interface
+    # (eth0) and the Saturn WireGuard interface (wg0) without per-IP binds.
+    network_mode: host
+    environment:
+      HOST: 0.0.0.0
+      PORT: ${PAPERCLIP_PORT:-4280}
+      PAPERCLIP_HOME: /paperclip
+      PAPERCLIP_DEPLOYMENT_MODE: authenticated
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET must be set in .env}
+      # Public base URL — registers this hostname as a trusted auth origin
+      # so external requests aren't 403'd by better-auth. Use the canonical
+      # short hostname; via WireGuard, dnsmasq on Saturn resolves `jupiter`
+      # to the LAN IP.
+      PAPERCLIP_PUBLIC_URL: http://jupiter:${PAPERCLIP_PORT:-4280}
+      # Extra hostnames the API should also accept (comma-separated). Covers
+      # mDNS (.local), the .home domain, and loopback.
+      PAPERCLIP_ALLOWED_HOSTNAMES: jupiter,jupiter.local,jupiter.home,localhost
+      # Use the shared Postgres on the host instead of Paperclip's embedded
+      # PostgreSQL. Schema is provisioned via `drizzle-kit push` (see README).
+      DATABASE_URL: postgres://paperclip:${PAPERCLIP_DB_PASSWORD}@127.0.0.1:5432/paperclip
+    volumes:
+      - paperclip-data:/paperclip
+      # Mounts the host's Claude credentials so the claude-local adapter can
+      # use the Claude Max subscription. The upstream Dockerfile does NOT
+      # install the `claude` CLI inside the image yet, so this only takes
+      # effect once an agent is configured to invoke claude on the host or a
+      # custom Dockerfile layer adds the CLI. Harmless to mount in the meantime.
+      - /home/joris/.claude:/root/.claude
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   grafana-data:
   loki-data:
   prometheus-data:
+  postgres-data:
+  paperclip-data:

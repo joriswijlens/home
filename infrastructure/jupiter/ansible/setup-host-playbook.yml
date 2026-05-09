@@ -115,6 +115,22 @@
         owner: root
         group: root
 
+    - name: Copy postgres-dump script
+      copy:
+        src: files/postgres-dump.sh
+        dest: /usr/local/bin/postgres-dump.sh
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Ensure postgres dump directory exists
+      file:
+        path: /var/lib/postgres-dumps
+        state: directory
+        owner: root
+        group: root
+        mode: '0700'
+
     - name: Copy systemd service file
       copy:
         src: files/opencloud-backup.service
@@ -131,6 +147,22 @@
         owner: root
         group: root
 
+    - name: Copy postgres-dump systemd service
+      copy:
+        src: files/postgres-dump.service
+        dest: /etc/systemd/system/postgres-dump.service
+        mode: '0644'
+        owner: root
+        group: root
+
+    - name: Copy postgres-dump systemd timer
+      copy:
+        src: files/postgres-dump.timer
+        dest: /etc/systemd/system/postgres-dump.timer
+        mode: '0644'
+        owner: root
+        group: root
+
     - name: Reload systemd daemon
       systemd:
         daemon_reload: yes
@@ -138,6 +170,12 @@
     - name: Enable and start backup timer
       systemd:
         name: opencloud-backup.timer
+        enabled: yes
+        state: started
+
+    - name: Enable and start postgres-dump timer
+      systemd:
+        name: postgres-dump.timer
         enabled: yes
         state: started
 

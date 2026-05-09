@@ -7,3 +7,5 @@ services/backups/
 volumes/
 backups/
 .mcp.json
+.env
+infrastructure/*/.env

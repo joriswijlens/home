@@ -1,0 +1,14 @@
+[Unit]
+Description=Dump Jupiter Postgres databases to /var/lib/postgres-dumps
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/postgres-dump.sh
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=postgres-dump
+
+[Install]
+WantedBy=multi-user.target

@@ -43,6 +43,16 @@
         rsync_opts:
           - "--exclude=.gitignore"
 
+    - name: Copy postgres init scripts
+      ansible.posix.synchronize:
+        src: "{{ playbook_dir }}/../postgres-init/"
+        dest: "{{ jupiter_home }}/postgres-init"
+        mode: push
+        delete: false
+        recursive: true
+        rsync_opts:
+          - "--exclude=.gitignore"
+
     - name: Copy docker-compose.yml
       copy:
         src: "{{ playbook_dir }}/../docker-compose.yml"
@@ -50,6 +60,22 @@
         owner: joris
         group: joris
         mode: '0644'
+
+    - name: Check for local .env file
+      delegate_to: localhost
+      become: false
+      stat:
+        path: "{{ playbook_dir }}/../.env"
+      register: local_env
+
+    - name: Copy .env (if present locally)
+      copy:
+        src: "{{ playbook_dir }}/../.env"
+        dest: "{{ jupiter_home }}/.env"
+        owner: joris
+        group: joris
+        mode: '0600'
+      when: local_env.stat.exists
 
     - name: Restart monitoring containers
       become: false

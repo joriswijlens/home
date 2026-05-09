@@ -10,7 +10,10 @@ if [ -f /root/.scaleway-credentials ]; then
     source /root/.scaleway-credentials
 fi
 
-BACKUP_DIRS="/etc/opencloud /var/lib/opencloud /var/lib/radicale /var/lib/vaultwarden/data"
+# /var/lib/postgres-dumps holds compressed pg_dump artifacts written by
+# postgres-dump.timer. We sync these — NOT the live postgres-data Docker
+# volume, which is unsafe to copy under concurrent writes.
+BACKUP_DIRS="/etc/opencloud /var/lib/opencloud /var/lib/radicale /var/lib/vaultwarden/data /var/lib/postgres-dumps"
 REMOTE="scaleway:jupiter-backup"
 LOG_FILE="/var/log/opencloud-backup.log"
 
