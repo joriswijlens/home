@@ -33,6 +33,30 @@ bridge can no longer receive an `OFF`), and automatically after
 undriven/booting pin leaves the valve shut — the watchdog is the backstop, not
 the only line of defence. If HA dies mid-run, the watchdog still closes the tap.
 
+## Hardware & wiring
+
+Field side is deliberately simple — one relay switching 24 VAC to a
+normally-closed solenoid:
+
+```
+Venus GPIO BCM17 ───────────> relay IN
+Venus 5V / GND ─────────────> relay board VCC / GND
+
+24 VAC transformer leg A ───> relay COM
+relay NO ───────────────────> XCZ solenoid ───> 24 VAC transformer leg B
+```
+
+- **Use the relay's NO (normally-open) contact** so the solenoid is powered
+  only when the relay is actively closed. With an **active-high** board the
+  relay stays open while the GPIO is low/undriven (boot, crash) → valve shut.
+- **24 VAC** sprinkler transformer (≥ 10 VA) for the solenoid. It's AC, so no
+  flyback diode; an RC snubber across the contact is optional.
+- The Rain Bird XCZ-075-PRF is **normally-closed**: no power = shut = fail-safe.
+  Its built-in pressure-regulating filter (~40 psi) is electrically irrelevant.
+- Most opto-isolated relay boards accept the Pi's 3.3 V on `IN` (some need the
+  `JD-VCC` jumper moved); board VCC is 5 V.
+- The wired pin is `irrigation_tap_gpio_pin` (default BCM 17).
+
 ## Variables (`defaults/main.yml`)
 
 | Variable | Default | Notes |
@@ -86,6 +110,65 @@ mosquitto_pub -h mars.local -t irrigation/tap/set -m OFF
 Only the final relay/valve bring-up has to happen on Venus (`GPIO_BACKEND=real`);
 the bridge/HA config is identical when you swap the breadboard bulb for the
 solenoid.
+
+## Bring-up (breadboard → valve)
+
+Validate in increasing order of consequence. The software is identical at every
+step (same pin, same `ACTIVE_HIGH`, same topics) — only the wired load changes:
+
+1. **Stub on the laptop** — see *Local development* above. Proves MQTT /
+   watchdog / fail-safe with no hardware.
+2. **Bare LED on Venus** — deploy with `GPIO_BACKEND=real` and an LED + resistor
+   on the pin. `mosquitto_pub … ON/OFF` lights it. Reboot Venus → LED stays off
+   (active-high fail-safe). Leave it ON past `MAX_ON_SECONDS` → the watchdog
+   turns it off (`journalctl -u irrigation-tap-bridge`).
+3. **Relay + low-voltage bulb** — wire the relay; repeat the tests, now you hear
+   the click and the bulb follows.
+4. **Solenoid** — swap the bulb for the 24 VAC transformer + XCZ valve. Put a
+   bucket under a dripper; confirm water flows on `ON` and stops on `OFF`.
+
+## Home Assistant side (Mars)
+
+The HA half lives in `services/home-assistant/config/`:
+
+- `packages/irrigation.yaml` — MQTT `switch.irrigation_tap`, enable / duration /
+  rain-threshold helpers, two Buienradar REST rain sensors (today / tomorrow),
+  Signal notify.
+- `custom_automations/irrigation.yaml` — 04:00 run (offline-guard → rain-skip →
+  open N min → close) + a bridge-offline alert.
+
+Setup:
+
+1. Add to Mars `secrets.yaml` (gitignored): `signal_sender_number` and
+   `signal_recipient_number`.
+2. Deploy:
+   ```bash
+   cd infrastructure/mars/ansible/
+   ansible-playbook -i inventory.ini backup_remote_data.yml
+   ansible-playbook -i inventory.ini copy-config.yml
+   ```
+   then restart Home Assistant.
+3. Turn on `input_boolean.irrigation_enabled`; set `irrigation_run_minutes` and
+   `irrigation_rain_skip_mm`.
+4. *(Optional)* Add the **Buienradar** integration in the HA UI for a weather
+   card — the REST sensors already drive the watering decision.
+
+## End-to-end smoke tests
+
+1. **Manual** — toggle `switch.irrigation_tap` in HA → valve opens/closes and
+   `irrigation/tap/state` follows.
+2. **Rain skip** — set `irrigation_rain_skip_mm` to 0 and run the automation
+   (or wait for 04:00) → Signal "overgeslagen", no run.
+3. **Watchdog** — open the valve and walk away; after `MAX_ON_SECONDS` the
+   bridge closes it.
+4. **Offline alert** — `systemctl stop irrigation-tap-bridge` → after 5 min HA
+   sends the bridge-offline Signal alert and `switch.irrigation_tap` shows
+   unavailable.
+
+## Maintenance
+
+- Pre-winter: disable `input_boolean.irrigation_enabled`, drain the line, and
+  keep the transformer/relay enclosure out of frost.
 
 ## Tests
 
