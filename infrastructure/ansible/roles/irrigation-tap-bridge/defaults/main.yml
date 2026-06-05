@@ -4,8 +4,9 @@
 
 irrigation_tap_script_path: /opt/smartworkx/irrigation-tap/irrigation_tap_bridge.py
 
-# MQTT broker (Mars Mosquitto, anonymous).
-irrigation_tap_mqtt_host: mars.local
+# MQTT broker (Mars Mosquitto, anonymous). Use bare `mars` — on this network
+# mars.local (mDNS) does not resolve from Venus, but `mars`/`mars.home` do.
+irrigation_tap_mqtt_host: mars
 irrigation_tap_mqtt_port: 1883
 irrigation_tap_topic_base: irrigation/tap
 
