@@ -1,0 +1,21 @@
+[Unit]
+Description=Irrigation tap MQTT-GPIO bridge (Phase 1)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 {{ irrigation_tap_script_path }}
+Restart=always
+RestartSec=5
+Environment=MQTT_HOST={{ irrigation_tap_mqtt_host }}
+Environment=MQTT_PORT={{ irrigation_tap_mqtt_port }}
+Environment=TOPIC_BASE={{ irrigation_tap_topic_base }}
+Environment=GPIO_BACKEND={{ irrigation_tap_gpio_backend }}
+Environment=GPIO_CHIP={{ irrigation_tap_gpio_chip }}
+Environment=GPIO_PIN={{ irrigation_tap_gpio_pin }}
+Environment=ACTIVE_HIGH={{ irrigation_tap_active_high | lower }}
+Environment=MAX_ON_SECONDS={{ irrigation_tap_max_on_seconds }}
+
+[Install]
+WantedBy=multi-user.target

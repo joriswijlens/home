@@ -1,6 +1,9 @@
 .idea
 *.iml
 *.bkp
+__pycache__/
+*.pyc
+.pytest_cache/
 *.mp4
 services/docker-compose.override.yml
 services/backups/

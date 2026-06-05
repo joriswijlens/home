@@ -1,0 +1,8 @@
+{
+  "python.defaultInterpreterPath": "/home/joris/.pyenv/versions/3.10.5/bin/python3",
+  "python.testing.pytestEnabled": true,
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestArgs": [
+    "infrastructure/ansible/roles/irrigation-tap-bridge/tests"
+  ]
+}

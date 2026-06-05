@@ -1,0 +1,15 @@
+---
+# Deploy the Phase 1 irrigation tap MQTT<->GPIO bridge to Venus.
+#
+#   cd infrastructure/venus/ansible/
+#   ansible-playbook -i inventory.ini irrigation-tap-playbook.yml
+#
+# Override GPIO pin / backend etc. with -e, e.g. for a dry run with no relay:
+#   ansible-playbook -i inventory.ini irrigation-tap-playbook.yml \
+#     -e irrigation_tap_gpio_backend=stub
+- hosts: ai-nodes
+  become: true
+  become_method: sudo
+  become_user: root
+  roles:
+    - ../../ansible/roles/irrigation-tap-bridge
