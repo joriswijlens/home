@@ -14,10 +14,12 @@ irrigation_tap_topic_base: irrigation/tap
 irrigation_tap_gpio_backend: real
 irrigation_tap_gpio_chip: 0
 irrigation_tap_gpio_pin: 17
-# active_high=true: relay energised (valve open) when the pin is HIGH, and an
-# undriven/booting pin (LOW) leaves the valve CLOSED. Use an active-high relay
-# board so a reboot can't open the tap.
-irrigation_tap_active_high: true
+# The wired board (blue 4-ch JQC-3FF opto board) is LOW-level trigger, so the
+# relay energises (valve open) when the pin is LOW => active_high=false.
+# Fail-safe verified empirically (2026-06-10): with the pin undriven through a
+# full Venus boot the channel LED only glows faintly (BCM17's ~50k pull-down
+# leaks far less than the opto needs) and the NO contact stays open (Fluke: OL).
+irrigation_tap_active_high: false
 
 # Watchdog: force the valve closed after this many seconds no matter what.
 # Must exceed the longest intended HA run (input_number.irrigation_run_minutes,
