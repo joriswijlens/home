@@ -63,6 +63,37 @@
           ({{ rain_total | round(1) }} mm regen verwacht, onder drempel
           {{ rain_threshold }} mm).
 
+- alias: "Irrigatie: trafo-stekker volgt de tap"
+  description: >-
+    Schakelt de trafo-stekker (switch.stekker_irrigatie) gelijk met
+    switch.irrigation_tap, zodat de transformator alleen onder spanning staat
+    tijdens het bewateren. Extra veiligheidslaag: ook als het relais zou blijven
+    hangen, geeft een spanningsloze trafo geen open klep. Werkt voor de
+    geplande run en voor handmatig schakelen. De stekker blijft verborgen op
+    het dashboard; deze automation is de enige bediener.
+  triggers:
+    - trigger: state
+      entity_id: switch.irrigation_tap
+      to: "on"
+      id: tap_on
+    - trigger: state
+      entity_id: switch.irrigation_tap
+      to: "off"
+      id: tap_off
+  mode: queued
+  actions:
+    - choose:
+        - conditions: "{{ trigger.id == 'tap_on' }}"
+          sequence:
+            - service: switch.turn_on
+              target:
+                entity_id: switch.stekker_irrigatie
+        - conditions: "{{ trigger.id == 'tap_off' }}"
+          sequence:
+            - service: switch.turn_off
+              target:
+                entity_id: switch.stekker_irrigatie
+
 - alias: "Irrigatie: tap bridge offline"
   description: "Waarschuw als de Venus tap-bridge langer dan 5 min onbereikbaar is."
   triggers:
