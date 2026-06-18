@@ -1,0 +1,55 @@
+- alias: Scene switch bar - links onder - alles uit beneden
+  description: Schakelt lichten beneden uit; spaart koelkast, wasmachine, droger, afwasmachine, stoov etc.
+  triggers:
+    - trigger: mqtt
+      topic: zigbee2mqtt/Scene switch bar
+      payload: 3_single
+      value_template: "{{ value_json.action }}"
+  conditions: []
+  actions:
+    - action: light.turn_off
+      target:
+        area_id:
+          - woonkamer
+          - keuken
+          - bijkeuken
+          - garage
+          - kantoor
+          - wc
+          - tuin
+          - buiten_voor
+    - action: switch.turn_off
+      target:
+        entity_id:
+          - switch.0xa4c138f299ead503  # Lamp eettafel
+          - switch.0xa4c138006f9bffff  # Lamp kast
+          - switch.0xa4c138004221ffff  # Lamp bar (keuken)
+          - switch.bijkeuken_schakelaar_1
+          - switch.0xccba97fffec69984  # Lamp garage
+          - switch.0xa4c138370c8b7a82  # Lamp kantoor
+          - switch.0xa4c138a7fb68ffc8  # Lamp WC
+          - switch.0xa4c1385a31bdbf1d  # Lamp buiten voor
+          - switch.0x7c2c67fffe7863f4  # Lamp zithoek tuin
+  mode: single
+
+- alias: Scene switch bar - rechts onder - avondscene woonkamer en keuken
+  description: Zet alle lampen in woonkamer en keuken aan
+  triggers:
+    - trigger: mqtt
+      topic: zigbee2mqtt/Scene switch bar
+      payload: 4_single
+      value_template: "{{ value_json.action }}"
+  conditions: []
+  actions:
+    - action: light.turn_on
+      target:
+        area_id:
+          - woonkamer
+          - keuken
+    - action: switch.turn_on
+      target:
+        entity_id:
+          - switch.0xa4c138f299ead503  # Lamp eettafel
+          - switch.0xa4c138006f9bffff  # Lamp kast
+          - switch.0xa4c138004221ffff  # Lamp bar (keuken)
+  mode: single
