@@ -64,13 +64,13 @@ rest:
     sensor:
       - name: "Rain forecast today"
         unique_id: rain_forecast_today
-        value_template: "{{ value_json.Forecast.FiveDayForecast[0].RainMaxMm | float(0) }}"
+        value_template: "{{ value_json.forecast.fivedayforecast[0].mmRainMax | float(0) }}"
         unit_of_measurement: "mm"
         device_class: precipitation
         state_class: measurement
       - name: "Rain forecast tomorrow"
         unique_id: rain_forecast_tomorrow
-        value_template: "{{ value_json.Forecast.FiveDayForecast[1].RainMaxMm | float(0) }}"
+        value_template: "{{ value_json.forecast.fivedayforecast[1].mmRainMax | float(0) }}"
         unit_of_measurement: "mm"
         device_class: precipitation
         state_class: measurement
