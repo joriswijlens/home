@@ -17,3 +17,13 @@ lovelace:
       title: "Virtuele Batterij"
       icon: mdi:battery-charging
       filename: dashboards/virtual_battery.yaml
+    energie-monitor:
+      mode: yaml
+      title: "Energiemonitor"
+      icon: mdi:flash
+      filename: dashboards/energie.yaml
+    weheat-dashboard:
+      mode: yaml
+      title: "Weheat"
+      icon: mdi:heat-pump-outline
+      filename: dashboards/weheat.yaml

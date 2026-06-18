@@ -1,0 +1,96 @@
+title: "Energiemonitor"
+views:
+  - title: Overzicht
+    type: sections
+    max_columns: 2
+    sections:
+      - type: grid
+        cards:
+          - type: energy-date-selection
+          - type: energy-usage-graph
+          - type: energy-solar-graph
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: "Netto Energiekosten"
+            heading_style: subtitle
+          - type: custom:apexcharts-card
+            header:
+              title: "Kosten per uur (verbruik − teruglevering)"
+              show: true
+            graph_span: 24h
+            span:
+              start: day
+            apex_config:
+              chart:
+                toolbar:
+                  show: true
+                stacked: true
+              xaxis:
+                labels:
+                  format: "HH:mm"
+              yaxis:
+                - title:
+                    text: "€/h"
+                  decimalsInFloat: 2
+              tooltip:
+                x:
+                  format: "HH:mm"
+            now:
+              show: true
+              color: "#FF4560"
+            series:
+              - entity: sensor.energiekosten_per_uur
+                name: "Netto kosten"
+                type: area
+                color: "#FF9800"
+                opacity: 0.3
+                stroke_width: 2
+                float_precision: 2
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: "Day-Ahead Tarieven"
+            heading_style: subtitle
+          - type: custom:apexcharts-card
+            header:
+              title: "Zonneplan Tarieven"
+              show: true
+            graph_span: 48h
+            span:
+              start: day
+            apex_config:
+              chart:
+                toolbar:
+                  show: true
+              xaxis:
+                labels:
+                  format: "HH:mm"
+              yaxis:
+                - title:
+                    text: "€/kWh"
+                  decimalsInFloat: 2
+              tooltip:
+                x:
+                  format: "dd MMM HH:mm"
+                "y":
+                  formatter: |
+                    EVAL:function(value) { return '€ ' + value.toFixed(2); }
+            now:
+              show: true
+              color: "#FF4560"
+            series:
+              - entity: sensor.zonneplan_current_electricity_tariff
+                name: "Tarief"
+                type: area
+                color: "#4CAF50"
+                opacity: 0.3
+                stroke_width: 2
+                float_precision: 2
+                data_generator: |
+                  const forecast = entity.attributes.forecast || [];
+                  return forecast.map(f => {
+                    return [new Date(f.datetime).getTime(), Math.round(f.electricity_price / 100000) / 100];
+                  });

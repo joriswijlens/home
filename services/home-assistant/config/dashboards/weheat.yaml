@@ -1,0 +1,94 @@
+title: "Weheat"
+views:
+  - title: Overzicht
+    type: sections
+    max_columns: 2
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: "Status"
+            heading_style: subtitle
+          - type: history-graph
+            entities:
+              - entity: sensor.blackbird_p80_heat_pump
+                name: "Modus"
+            hours_to_show: 3
+      - type: custom:apexcharts-card
+        header:
+          title: "COP"
+          show: true
+        graph_span: 3h
+        apex_config:
+          chart:
+            toolbar:
+              show: true
+        now:
+          show: true
+          color: "#FF4560"
+        series:
+          - entity: sensor.blackbird_p80_heat_pump_cop
+            name: "COP"
+            type: line
+            color: "#4CAF50"
+            stroke_width: 2
+      - type: custom:apexcharts-card
+        header:
+          title: "Vermogen"
+          show: true
+        graph_span: 3h
+        apex_config:
+          chart:
+            toolbar:
+              show: true
+          yaxis:
+            - title:
+                text: "W"
+        now:
+          show: true
+          color: "#FF4560"
+        series:
+          - entity: sensor.blackbird_p80_heat_pump_vermogen_in
+            name: "In"
+            type: area
+            color: "#FF9800"
+            opacity: 0.3
+            stroke_width: 2
+          - entity: sensor.blackbird_p80_heat_pump_vermogen_uit
+            name: "Uit"
+            type: area
+            color: "#4CAF50"
+            opacity: 0.3
+            stroke_width: 2
+      - type: custom:apexcharts-card
+        header:
+          title: "Temperaturen"
+          show: true
+        graph_span: 3h
+        apex_config:
+          chart:
+            toolbar:
+              show: true
+          yaxis:
+            - title:
+                text: "°C"
+        now:
+          show: true
+          color: "#FF4560"
+        series:
+          - entity: sensor.blackbird_p80_heat_pump_buitentemperatuur
+            name: "Buiten"
+            type: line
+            stroke_width: 2
+          - entity: sensor.blackbird_p80_heat_pump_watertemperatuur_in
+            name: "Water in"
+            type: line
+            stroke_width: 2
+          - entity: sensor.blackbird_p80_heat_pump_watertemperatuur_uit
+            name: "Water uit"
+            type: line
+            stroke_width: 2
+          - entity: sensor.blackbird_p80_heat_pump_huidige_kamertemperatuur
+            name: "Kamer"
+            type: line
+            stroke_width: 2

@@ -29,6 +29,24 @@ input_number:
     step: 0.5
     icon: mdi:battery-low
 
+  virtual_battery_discharge_min_price:
+    name: "Virtual Battery Discharge Min Price"
+    unit_of_measurement: "EUR/kWh"
+    min: 0
+    max: 1.0
+    step: 0.01
+    initial: 0.15
+    icon: mdi:cash-minus
+
+  virtual_battery_discharge_top_percent:
+    name: "Virtual Battery Discharge Top %"
+    unit_of_measurement: "%"
+    min: 10
+    max: 100
+    step: 5
+    initial: 50
+    icon: mdi:percent-circle
+
   # Virtual EV - consumes solar excess before battery
   virtual_ev_daily_kwh:
     name: "Virtual EV Daily Charge"
@@ -66,6 +84,11 @@ input_number:
     min: -9999999
     max: 9999999
     step: 0.001
+  virtual_battery_10_savings_self_gross:
+    name: "VB 10kWh Bruto Zelfconsumptie"
+    min: 0
+    max: 9999999
+    step: 0.001
   virtual_battery_10_revenue_export:
     name: "VB 10kWh Verkoop Overschot"
     min: 0
@@ -96,6 +119,11 @@ input_number:
   virtual_battery_20_savings_self:
     name: "VB 20kWh Zelfconsumptie"
     min: -9999999
+    max: 9999999
+    step: 0.001
+  virtual_battery_20_savings_self_gross:
+    name: "VB 20kWh Bruto Zelfconsumptie"
+    min: 0
     max: 9999999
     step: 0.001
   virtual_battery_20_revenue_export:
@@ -130,6 +158,11 @@ input_number:
     min: -9999999
     max: 9999999
     step: 0.001
+  virtual_battery_30_savings_self_gross:
+    name: "VB 30kWh Bruto Zelfconsumptie"
+    min: 0
+    max: 9999999
+    step: 0.001
   virtual_battery_30_revenue_export:
     name: "VB 30kWh Verkoop Overschot"
     min: 0
@@ -160,6 +193,11 @@ input_number:
   virtual_battery_40_savings_self:
     name: "VB 40kWh Zelfconsumptie"
     min: -9999999
+    max: 9999999
+    step: 0.001
+  virtual_battery_40_savings_self_gross:
+    name: "VB 40kWh Bruto Zelfconsumptie"
+    min: 0
     max: 9999999
     step: 0.001
   virtual_battery_40_revenue_export:
@@ -217,6 +255,28 @@ automation:
             {% else %}
               {{ 0.07 }}
             {% endif %}
+          # Discharge price logic
+          discharge_min_price: "{{ states('input_number.virtual_battery_discharge_min_price') | float(0.15) }}"
+          discharge_top_pct: "{{ states('input_number.virtual_battery_discharge_top_percent') | float(50) }}"
+          discharge_price_threshold: >
+            {% set forecast = state_attr('sensor.zonneplan_current_electricity_tariff', 'forecast') %}
+            {% if forecast %}
+              {% set remaining = forecast | selectattr('datetime', 'ge', now().strftime('%Y-%m-%dT%H:00:00')) | list %}
+              {% set today_remaining = remaining | selectattr('datetime', 'search', now().strftime('%Y-%m-%d')) | list %}
+              {% if today_remaining | length > 0 %}
+                {% set prices = today_remaining | map(attribute='electricity_price') | map('float') | sort | list %}
+                {% set idx = [((1 - (discharge_top_pct | float) / 100) * (prices | length)) | int, 0] | max %}
+                {{ prices[idx] / 10000000 }}
+              {% else %}
+                {{ discharge_min_price }}
+              {% endif %}
+            {% else %}
+              {{ discharge_min_price }}
+            {% endif %}
+          # Effective threshold: max of min_price and top_percent threshold
+          discharge_threshold: "{{ [discharge_min_price | float, discharge_price_threshold | float] | max }}"
+          # Can we discharge at current price?
+          can_discharge: "{{ (dyn_elec | float) >= (discharge_threshold | float) }}"
           # Time step (1 min in hours)
           dt: "{{ 1 / 60 }}"
           # Virtual EV - charges from solar excess first
@@ -243,14 +303,16 @@ automation:
           above_min: "{{ [((soc | float) / 100 * cap) - (min_soc | float), 0] | max }}"
       - variables:
           cp: "{% if (export_power | float) > 0 and (soc | float) < 100 %}{{ [(export_power | float), (max_rate | float), (headroom | float) / (dt | float)] | min }}{% else %}0{% endif %}"
-          dp: "{% if (import_power | float) > 0 and ((soc | float) / 100 * cap) > (min_soc | float) %}{{ [(import_power | float), (max_rate | float), (above_min | float) / (dt | float)] | min }}{% else %}0{% endif %}"
+          dp: "{% if (import_power | float) > 0 and (can_discharge | bool) and ((soc | float) / 100 * cap) > (min_soc | float) %}{{ [(import_power | float), (max_rate | float), (above_min | float) / (dt | float)] | min }}{% else %}0{% endif %}"
       - variables:
           ce: "{{ (cp | float) * (dt | float) }}"
           de: "{{ (dp | float) * (dt | float) }}"
           excess: "{{ ((export_power | float) - (cp | float)) * (dt | float) }}"
           new_soc: "{{ [[(soc | float) + ((ce | float) / cap * 100) - ((de | float) / cap * 100), 0] | max, 100] | min }}"
-          # 1. Zelfconsumptie at flat rate
+          # 1. Zelfconsumptie (netto, minus opportunity cost)
           val_self: "{{ (de | float) * (dyn_elec | float) - (ce | float) * (dyn_feedin | float) }}"
+          # 1b. Bruto zelfconsumptie (alleen besparing op netstroom)
+          val_self_gross: "{{ (de | float) * (dyn_elec | float) }}"
           # 2. Verkoop overschot at dynamic rate
           val_export: "{{ [(excess | float), 0] | max * (dyn_feedin | float) }}"
           # 3. Arbitrage = dynamic total - flat total
@@ -277,6 +339,11 @@ automation:
           value: "{{ states('input_number.virtual_battery_10_savings_self') | float(0) + val_self | float }}"
       - action: input_number.set_value
         target:
+          entity_id: input_number.virtual_battery_10_savings_self_gross
+        data:
+          value: "{{ states('input_number.virtual_battery_10_savings_self_gross') | float(0) + val_self_gross | float }}"
+      - action: input_number.set_value
+        target:
           entity_id: input_number.virtual_battery_10_revenue_export
         data:
           value: "{{ states('input_number.virtual_battery_10_revenue_export') | float(0) + val_export | float }}"
@@ -295,13 +362,14 @@ automation:
           above_min: "{{ [((soc | float) / 100 * cap) - (min_soc | float), 0] | max }}"
       - variables:
           cp: "{% if (export_power | float) > 0 and (soc | float) < 100 %}{{ [(export_power | float), (max_rate | float), (headroom | float) / (dt | float)] | min }}{% else %}0{% endif %}"
-          dp: "{% if (import_power | float) > 0 and ((soc | float) / 100 * cap) > (min_soc | float) %}{{ [(import_power | float), (max_rate | float), (above_min | float) / (dt | float)] | min }}{% else %}0{% endif %}"
+          dp: "{% if (import_power | float) > 0 and (can_discharge | bool) and ((soc | float) / 100 * cap) > (min_soc | float) %}{{ [(import_power | float), (max_rate | float), (above_min | float) / (dt | float)] | min }}{% else %}0{% endif %}"
       - variables:
           ce: "{{ (cp | float) * (dt | float) }}"
           de: "{{ (dp | float) * (dt | float) }}"
           excess: "{{ ((export_power | float) - (cp | float)) * (dt | float) }}"
           new_soc: "{{ [[(soc | float) + ((ce | float) / cap * 100) - ((de | float) / cap * 100), 0] | max, 100] | min }}"
           val_self: "{{ (de | float) * (dyn_elec | float) - (ce | float) * (dyn_feedin | float) }}"
+          val_self_gross: "{{ (de | float) * (dyn_elec | float) }}"
           val_export: "{{ [(excess | float), 0] | max * (dyn_feedin | float) }}"
           val_arb: "{{ 0 }}"
       - action: input_number.set_value
@@ -326,6 +394,11 @@ automation:
           value: "{{ states('input_number.virtual_battery_20_savings_self') | float(0) + val_self | float }}"
       - action: input_number.set_value
         target:
+          entity_id: input_number.virtual_battery_20_savings_self_gross
+        data:
+          value: "{{ states('input_number.virtual_battery_20_savings_self_gross') | float(0) + val_self_gross | float }}"
+      - action: input_number.set_value
+        target:
           entity_id: input_number.virtual_battery_20_revenue_export
         data:
           value: "{{ states('input_number.virtual_battery_20_revenue_export') | float(0) + val_export | float }}"
@@ -344,13 +417,14 @@ automation:
           above_min: "{{ [((soc | float) / 100 * cap) - (min_soc | float), 0] | max }}"
       - variables:
           cp: "{% if (export_power | float) > 0 and (soc | float) < 100 %}{{ [(export_power | float), (max_rate | float), (headroom | float) / (dt | float)] | min }}{% else %}0{% endif %}"
-          dp: "{% if (import_power | float) > 0 and ((soc | float) / 100 * cap) > (min_soc | float) %}{{ [(import_power | float), (max_rate | float), (above_min | float) / (dt | float)] | min }}{% else %}0{% endif %}"
+          dp: "{% if (import_power | float) > 0 and (can_discharge | bool) and ((soc | float) / 100 * cap) > (min_soc | float) %}{{ [(import_power | float), (max_rate | float), (above_min | float) / (dt | float)] | min }}{% else %}0{% endif %}"
       - variables:
           ce: "{{ (cp | float) * (dt | float) }}"
           de: "{{ (dp | float) * (dt | float) }}"
           excess: "{{ ((export_power | float) - (cp | float)) * (dt | float) }}"
           new_soc: "{{ [[(soc | float) + ((ce | float) / cap * 100) - ((de | float) / cap * 100), 0] | max, 100] | min }}"
           val_self: "{{ (de | float) * (dyn_elec | float) - (ce | float) * (dyn_feedin | float) }}"
+          val_self_gross: "{{ (de | float) * (dyn_elec | float) }}"
           val_export: "{{ [(excess | float), 0] | max * (dyn_feedin | float) }}"
           val_arb: "{{ 0 }}"
       - action: input_number.set_value
@@ -375,6 +449,11 @@ automation:
           value: "{{ states('input_number.virtual_battery_30_savings_self') | float(0) + val_self | float }}"
       - action: input_number.set_value
         target:
+          entity_id: input_number.virtual_battery_30_savings_self_gross
+        data:
+          value: "{{ states('input_number.virtual_battery_30_savings_self_gross') | float(0) + val_self_gross | float }}"
+      - action: input_number.set_value
+        target:
           entity_id: input_number.virtual_battery_30_revenue_export
         data:
           value: "{{ states('input_number.virtual_battery_30_revenue_export') | float(0) + val_export | float }}"
@@ -393,13 +472,14 @@ automation:
           above_min: "{{ [((soc | float) / 100 * cap) - (min_soc | float), 0] | max }}"
       - variables:
           cp: "{% if (export_power | float) > 0 and (soc | float) < 100 %}{{ [(export_power | float), (max_rate | float), (headroom | float) / (dt | float)] | min }}{% else %}0{% endif %}"
-          dp: "{% if (import_power | float) > 0 and ((soc | float) / 100 * cap) > (min_soc | float) %}{{ [(import_power | float), (max_rate | float), (above_min | float) / (dt | float)] | min }}{% else %}0{% endif %}"
+          dp: "{% if (import_power | float) > 0 and (can_discharge | bool) and ((soc | float) / 100 * cap) > (min_soc | float) %}{{ [(import_power | float), (max_rate | float), (above_min | float) / (dt | float)] | min }}{% else %}0{% endif %}"
       - variables:
           ce: "{{ (cp | float) * (dt | float) }}"
           de: "{{ (dp | float) * (dt | float) }}"
           excess: "{{ ((export_power | float) - (cp | float)) * (dt | float) }}"
           new_soc: "{{ [[(soc | float) + ((ce | float) / cap * 100) - ((de | float) / cap * 100), 0] | max, 100] | min }}"
           val_self: "{{ (de | float) * (dyn_elec | float) - (ce | float) * (dyn_feedin | float) }}"
+          val_self_gross: "{{ (de | float) * (dyn_elec | float) }}"
           val_export: "{{ [(excess | float), 0] | max * (dyn_feedin | float) }}"
           val_arb: "{{ 0 }}"
       - action: input_number.set_value
@@ -424,6 +504,11 @@ automation:
           value: "{{ states('input_number.virtual_battery_40_savings_self') | float(0) + val_self | float }}"
       - action: input_number.set_value
         target:
+          entity_id: input_number.virtual_battery_40_savings_self_gross
+        data:
+          value: "{{ states('input_number.virtual_battery_40_savings_self_gross') | float(0) + val_self_gross | float }}"
+      - action: input_number.set_value
+        target:
           entity_id: input_number.virtual_battery_40_revenue_export
         data:
           value: "{{ states('input_number.virtual_battery_40_revenue_export') | float(0) + val_export | float }}"
@@ -432,3 +517,135 @@ automation:
           entity_id: input_number.virtual_battery_40_savings_arbitrage
         data:
           value: "{{ states('input_number.virtual_battery_40_savings_arbitrage') | float(0) + val_arb | float }}"
+
+input_select:
+  virtual_battery_chart_period:
+    name: "Grafiek periode"
+    options:
+      - "3 maanden"
+      - "6 maanden"
+      - "12 maanden"
+    initial: "3 maanden"
+    icon: mdi:calendar-range
+
+# Monthly utility meters for financial tracking
+# Resets monthly, HA stores each period in long-term statistics for lookback
+utility_meter:
+  # --- 10 kWh ---
+  vb_10kwh_bruto_zelfconsumptie_maand:
+    source: sensor.vb_10kwh_bruto_zelfconsumptie
+    name: "VB 10kWh Bruto Zelfconsumptie Maand"
+    cycle: monthly
+  vb_10kwh_verkoop_overschot_maand:
+    source: sensor.vb_10kwh_verkoop_overschot
+    name: "VB 10kWh Verkoop Overschot Maand"
+    cycle: monthly
+  # --- 20 kWh ---
+  vb_20kwh_bruto_zelfconsumptie_maand:
+    source: sensor.vb_20kwh_bruto_zelfconsumptie
+    name: "VB 20kWh Bruto Zelfconsumptie Maand"
+    cycle: monthly
+  vb_20kwh_verkoop_overschot_maand:
+    source: sensor.vb_20kwh_verkoop_overschot
+    name: "VB 20kWh Verkoop Overschot Maand"
+    cycle: monthly
+  # --- 30 kWh ---
+  vb_30kwh_bruto_zelfconsumptie_maand:
+    source: sensor.vb_30kwh_bruto_zelfconsumptie
+    name: "VB 30kWh Bruto Zelfconsumptie Maand"
+    cycle: monthly
+  vb_30kwh_verkoop_overschot_maand:
+    source: sensor.vb_30kwh_verkoop_overschot
+    name: "VB 30kWh Verkoop Overschot Maand"
+    cycle: monthly
+  # --- 40 kWh ---
+  vb_40kwh_bruto_zelfconsumptie_maand:
+    source: sensor.vb_40kwh_bruto_zelfconsumptie
+    name: "VB 40kWh Bruto Zelfconsumptie Maand"
+    cycle: monthly
+  vb_40kwh_verkoop_overschot_maand:
+    source: sensor.vb_40kwh_verkoop_overschot
+    name: "VB 40kWh Verkoop Overschot Maand"
+    cycle: monthly
+  # --- Daily meters ---
+  vb_10kwh_bruto_zelfconsumptie_dag:
+    source: sensor.vb_10kwh_bruto_zelfconsumptie
+    name: "VB 10kWh Besparing Dag"
+    cycle: daily
+  vb_10kwh_energy_in_dag:
+    source: sensor.vb_10kwh_energy_in
+    name: "VB 10kWh Energy In Dag"
+    cycle: daily
+  vb_10kwh_energy_out_dag:
+    source: sensor.vb_10kwh_energy_out
+    name: "VB 10kWh Energy Out Dag"
+    cycle: daily
+  vb_20kwh_bruto_zelfconsumptie_dag:
+    source: sensor.vb_20kwh_bruto_zelfconsumptie
+    name: "VB 20kWh Besparing Dag"
+    cycle: daily
+  vb_20kwh_energy_in_dag:
+    source: sensor.vb_20kwh_energy_in
+    name: "VB 20kWh Energy In Dag"
+    cycle: daily
+  vb_20kwh_energy_out_dag:
+    source: sensor.vb_20kwh_energy_out
+    name: "VB 20kWh Energy Out Dag"
+    cycle: daily
+  vb_30kwh_bruto_zelfconsumptie_dag:
+    source: sensor.vb_30kwh_bruto_zelfconsumptie
+    name: "VB 30kWh Besparing Dag"
+    cycle: daily
+  vb_30kwh_energy_in_dag:
+    source: sensor.vb_30kwh_energy_in
+    name: "VB 30kWh Energy In Dag"
+    cycle: daily
+  vb_30kwh_energy_out_dag:
+    source: sensor.vb_30kwh_energy_out
+    name: "VB 30kWh Energy Out Dag"
+    cycle: daily
+  vb_40kwh_bruto_zelfconsumptie_dag:
+    source: sensor.vb_40kwh_bruto_zelfconsumptie
+    name: "VB 40kWh Besparing Dag"
+    cycle: daily
+  vb_40kwh_energy_in_dag:
+    source: sensor.vb_40kwh_energy_in
+    name: "VB 40kWh Energy In Dag"
+    cycle: daily
+  vb_40kwh_energy_out_dag:
+    source: sensor.vb_40kwh_energy_out
+    name: "VB 40kWh Energy Out Dag"
+    cycle: daily
+  # --- Monthly energy meters ---
+  vb_10kwh_energy_in_maand:
+    source: sensor.vb_10kwh_energy_in
+    name: "VB 10kWh Energy In Maand"
+    cycle: monthly
+  vb_10kwh_energy_out_maand:
+    source: sensor.vb_10kwh_energy_out
+    name: "VB 10kWh Energy Out Maand"
+    cycle: monthly
+  vb_20kwh_energy_in_maand:
+    source: sensor.vb_20kwh_energy_in
+    name: "VB 20kWh Energy In Maand"
+    cycle: monthly
+  vb_20kwh_energy_out_maand:
+    source: sensor.vb_20kwh_energy_out
+    name: "VB 20kWh Energy Out Maand"
+    cycle: monthly
+  vb_30kwh_energy_in_maand:
+    source: sensor.vb_30kwh_energy_in
+    name: "VB 30kWh Energy In Maand"
+    cycle: monthly
+  vb_30kwh_energy_out_maand:
+    source: sensor.vb_30kwh_energy_out
+    name: "VB 30kWh Energy Out Maand"
+    cycle: monthly
+  vb_40kwh_energy_in_maand:
+    source: sensor.vb_40kwh_energy_in
+    name: "VB 40kWh Energy In Maand"
+    cycle: monthly
+  vb_40kwh_energy_out_maand:
+    source: sensor.vb_40kwh_energy_out
+    name: "VB 40kWh Energy Out Maand"
+    cycle: monthly

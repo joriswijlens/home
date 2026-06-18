@@ -1,0 +1,26 @@
+# Energie kosten template sensors
+# Berekent realtime kosten op basis van Slimmelezer verbruik/teruglevering × Zonneplan tarief
+
+- sensor:
+    - name: "Energiekosten per uur"
+      unique_id: energiekosten_per_uur
+      unit_of_measurement: "EUR/h"
+      device_class: monetary
+      state_class: measurement
+      state: >
+        {% set verbruik_w = states('sensor.connect_energiemeter_elektriciteitsverbruik') | float(0) %}
+        {% set teruglevering_w = states('sensor.connect_energiemeter_elektriciteitsproductie') | float(0) %}
+        {% set tarief = states('sensor.zonneplan_current_electricity_tariff') | float(0.25) %}
+        {% set forecast = state_attr('sensor.zonneplan_current_electricity_tariff', 'forecast') %}
+        {% set now_hour = now().strftime('%Y-%m-%dT%H:00:00') %}
+        {% if forecast %}
+          {% set current = forecast | selectattr('datetime', 'search', now_hour) | list %}
+          {% if current %}
+            {% set feedin = (current[0].electricity_price_excl_tax / 10000000) * 1.10 %}
+          {% else %}
+            {% set feedin = 0.07 %}
+          {% endif %}
+        {% else %}
+          {% set feedin = 0.07 %}
+        {% endif %}
+        {{ ((verbruik_w / 1000 * tarief) - (teruglevering_w / 1000 * feedin)) | round(2) }}
