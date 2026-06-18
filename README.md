@@ -3,6 +3,7 @@
 This repository contains all the code and documentation for my home automation.
 
 Main goals:
+
 - zero emission
 - comfort in smart automation
 - getting rid of big tech companies
@@ -11,22 +12,22 @@ In the diagram you can see my setup
 
 ![Architecture](./home.drawio.png)
 
-# Test bench
+## Test bench
 
-- https://hometechhacker.com/how-to-make-a-smart-home-test-bench/
+- <https://hometechhacker.com/how-to-make-a-smart-home-test-bench/>
 
 This is my test bench for home automation. I use it to test new devices and configurations before deploying them in my home.
-I am a few days in and it already payed off. 
+I am a few days in and it already paid off.
 
 ![Test bench](./testbench.jpg)
 
-# Documentation
+## Documentation
 
 Look at the Architecture Decision Records (ADR) in the [ADR](./docs/adr) folder for more information about the decisions I made and why.
 
-# Releasing
+## Releasing
 
-This project follows a continuous deployment approach. Changes pushed to the main branch are automatically deployed to the `mars` host.
+This project follows a continuous deployment approach. Changes pushed to the master branch are automatically deployed to the `mars` host.
 
 **Before any release, always ensure a backup is performed using the instructions in the [Infrastructure Management README](./infrastructure/mars/ansible/README.md).**
 

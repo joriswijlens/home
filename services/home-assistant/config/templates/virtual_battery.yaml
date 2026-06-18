@@ -31,6 +31,13 @@
       state_class: total
       state: "{{ states('input_number.virtual_battery_10_savings_self') | float(0) | round(2) }}"
 
+    - name: "VB 10kWh Bruto Zelfconsumptie"
+      unique_id: virtual_battery_10_savings_self_gross
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state_class: total
+      state: "{{ states('input_number.virtual_battery_10_savings_self_gross') | float(0) | round(2) }}"
+
     - name: "VB 10kWh Verkoop Overschot"
       unique_id: virtual_battery_10_revenue_export
       unit_of_measurement: "EUR"
@@ -44,6 +51,12 @@
       device_class: monetary
       state_class: total
       state: "{{ states('input_number.virtual_battery_10_savings_arbitrage') | float(0) | round(2) }}"
+
+    - name: "VB 10kWh Opgeslagen"
+      unique_id: virtual_battery_10_kwh_stored
+      unit_of_measurement: "kWh"
+      device_class: energy_storage
+      state: "{{ (states('input_number.virtual_battery_10_soc') | float(0) / 100 * 10) | round(1) }}"
 
     # --- 20 kWh ---
     - name: "VB 20kWh SoC"
@@ -74,6 +87,13 @@
       state_class: total
       state: "{{ states('input_number.virtual_battery_20_savings_self') | float(0) | round(2) }}"
 
+    - name: "VB 20kWh Bruto Zelfconsumptie"
+      unique_id: virtual_battery_20_savings_self_gross
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state_class: total
+      state: "{{ states('input_number.virtual_battery_20_savings_self_gross') | float(0) | round(2) }}"
+
     - name: "VB 20kWh Verkoop Overschot"
       unique_id: virtual_battery_20_revenue_export
       unit_of_measurement: "EUR"
@@ -87,6 +107,12 @@
       device_class: monetary
       state_class: total
       state: "{{ states('input_number.virtual_battery_20_savings_arbitrage') | float(0) | round(2) }}"
+
+    - name: "VB 20kWh Opgeslagen"
+      unique_id: virtual_battery_20_kwh_stored
+      unit_of_measurement: "kWh"
+      device_class: energy_storage
+      state: "{{ (states('input_number.virtual_battery_20_soc') | float(0) / 100 * 20) | round(1) }}"
 
     # --- 30 kWh ---
     - name: "VB 30kWh SoC"
@@ -117,6 +143,13 @@
       state_class: total
       state: "{{ states('input_number.virtual_battery_30_savings_self') | float(0) | round(2) }}"
 
+    - name: "VB 30kWh Bruto Zelfconsumptie"
+      unique_id: virtual_battery_30_savings_self_gross
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state_class: total
+      state: "{{ states('input_number.virtual_battery_30_savings_self_gross') | float(0) | round(2) }}"
+
     - name: "VB 30kWh Verkoop Overschot"
       unique_id: virtual_battery_30_revenue_export
       unit_of_measurement: "EUR"
@@ -130,6 +163,12 @@
       device_class: monetary
       state_class: total
       state: "{{ states('input_number.virtual_battery_30_savings_arbitrage') | float(0) | round(2) }}"
+
+    - name: "VB 30kWh Opgeslagen"
+      unique_id: virtual_battery_30_kwh_stored
+      unit_of_measurement: "kWh"
+      device_class: energy_storage
+      state: "{{ (states('input_number.virtual_battery_30_soc') | float(0) / 100 * 30) | round(1) }}"
 
     # --- 40 kWh ---
     - name: "VB 40kWh SoC"
@@ -160,12 +199,25 @@
       state_class: total
       state: "{{ states('input_number.virtual_battery_40_savings_self') | float(0) | round(2) }}"
 
+    - name: "VB 40kWh Bruto Zelfconsumptie"
+      unique_id: virtual_battery_40_savings_self_gross
+      unit_of_measurement: "EUR"
+      device_class: monetary
+      state_class: total
+      state: "{{ states('input_number.virtual_battery_40_savings_self_gross') | float(0) | round(2) }}"
+
     - name: "VB 40kWh Verkoop Overschot"
       unique_id: virtual_battery_40_revenue_export
       unit_of_measurement: "EUR"
       device_class: monetary
       state_class: total
       state: "{{ states('input_number.virtual_battery_40_revenue_export') | float(0) | round(2) }}"
+
+    - name: "VB 40kWh Opgeslagen"
+      unique_id: virtual_battery_40_kwh_stored
+      unit_of_measurement: "kWh"
+      device_class: energy_storage
+      state: "{{ (states('input_number.virtual_battery_40_soc') | float(0) / 100 * 40) | round(1) }}"
 
     - name: "VB 40kWh Arbitrage"
       unique_id: virtual_battery_40_savings_arbitrage
