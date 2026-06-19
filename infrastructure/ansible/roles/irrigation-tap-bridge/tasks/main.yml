@@ -1,0 +1,35 @@
+---
+- name: Install bridge runtime dependencies
+  ansible.builtin.apt:
+    name:
+      - python3-paho-mqtt
+      - python3-lgpio
+    state: present
+    update_cache: true
+
+- name: Create bridge directory
+  ansible.builtin.file:
+    path: "{{ irrigation_tap_script_path | dirname }}"
+    state: directory
+    mode: "0755"
+
+- name: Install bridge script
+  ansible.builtin.copy:
+    src: irrigation_tap_bridge.py
+    dest: "{{ irrigation_tap_script_path }}"
+    mode: "0755"
+  notify: Restart irrigation-tap-bridge
+
+- name: Install systemd unit
+  ansible.builtin.template:
+    src: irrigation-tap-bridge.service.j2
+    dest: /etc/systemd/system/irrigation-tap-bridge.service
+    mode: "0644"
+  notify: Restart irrigation-tap-bridge
+
+- name: Enable and start bridge
+  ansible.builtin.systemd:
+    name: irrigation-tap-bridge
+    enabled: true
+    state: started
+    daemon_reload: true

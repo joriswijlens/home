@@ -1,0 +1,110 @@
+# Garden Irrigation Automations — Phase 1 (tap-only)
+#
+# See packages/irrigation.yaml for entities and GitHub issue #4 for the plan.
+# The bridge's max-on watchdog is the backstop: if HA dies mid-run, the valve
+# still auto-closes, so this automation can stay a simple open -> wait -> close.
+
+- alias: "Irrigatie: dagelijkse run"
+  description: "04:00 vaste looptijd; overslaan als regen (vandaag + morgen) boven drempel of als de bridge offline is."
+  triggers:
+    - trigger: time
+      at: "04:00:00"
+  conditions:
+    - condition: state
+      entity_id: input_boolean.irrigation_enabled
+      state: "on"
+  mode: single
+  variables:
+    rain_today: "{{ states('sensor.rain_forecast_today') | float(0) }}"
+    rain_tomorrow: "{{ states('sensor.rain_forecast_tomorrow') | float(0) }}"
+    rain_total: "{{ rain_today + rain_tomorrow }}"
+    rain_threshold: "{{ states('input_number.irrigation_rain_skip_mm') | float(5) }}"
+    run_minutes: "{{ states('input_number.irrigation_run_minutes') | float(10) }}"
+  actions:
+    # Guard: bridge unreachable -> don't pretend to water, alert instead.
+    - if:
+        - condition: state
+          entity_id: switch.irrigation_tap
+          state: "unavailable"
+      then:
+        - service: notify.signal_irrigation
+          data:
+            title: "Irrigatie"
+            message: "Run overgeslagen: tap-bridge (Venus) is offline."
+        - stop: "bridge offline"
+
+    # Rain skip.
+    - if:
+        - condition: template
+          value_template: "{{ rain_total > rain_threshold }}"
+      then:
+        - service: notify.signal_irrigation
+          data:
+            title: "Irrigatie"
+            message: >-
+              Overgeslagen: {{ rain_total | round(1) }} mm regen verwacht
+              (vandaag + morgen), drempel {{ rain_threshold }} mm.
+        - stop: "rain skip"
+
+    # Run.
+    - service: switch.turn_on
+      target:
+        entity_id: switch.irrigation_tap
+    - delay:
+        minutes: "{{ run_minutes | int }}"
+    - service: switch.turn_off
+      target:
+        entity_id: switch.irrigation_tap
+    - service: notify.signal_irrigation
+      data:
+        title: "Irrigatie"
+        message: >-
+          Klaar: {{ run_minutes | int }} min gedraaid
+          ({{ rain_total | round(1) }} mm regen verwacht, onder drempel
+          {{ rain_threshold }} mm).
+
+- alias: "Irrigatie: trafo-stekker volgt de tap"
+  description: >-
+    Schakelt de trafo-stekker (switch.stekker_irrigatie) gelijk met
+    switch.irrigation_tap, zodat de transformator alleen onder spanning staat
+    tijdens het bewateren. Extra veiligheidslaag: ook als het relais zou blijven
+    hangen, geeft een spanningsloze trafo geen open klep. Werkt voor de
+    geplande run en voor handmatig schakelen. De stekker blijft verborgen op
+    het dashboard; deze automation is de enige bediener.
+  triggers:
+    - trigger: state
+      entity_id: switch.irrigation_tap
+      to: "on"
+      id: tap_on
+    - trigger: state
+      entity_id: switch.irrigation_tap
+      to: "off"
+      id: tap_off
+  mode: queued
+  actions:
+    - choose:
+        - conditions: "{{ trigger.id == 'tap_on' }}"
+          sequence:
+            - service: switch.turn_on
+              target:
+                entity_id: switch.stekker_irrigatie
+        - conditions: "{{ trigger.id == 'tap_off' }}"
+          sequence:
+            - service: switch.turn_off
+              target:
+                entity_id: switch.stekker_irrigatie
+
+- alias: "Irrigatie: tap bridge offline"
+  description: "Waarschuw als de Venus tap-bridge langer dan 5 min onbereikbaar is."
+  triggers:
+    - trigger: state
+      entity_id: switch.irrigation_tap
+      to: "unavailable"
+      for:
+        minutes: 5
+  mode: single
+  actions:
+    - service: notify.signal_irrigation
+      data:
+        title: "Irrigatie"
+        message: "Tap-bridge (Venus) is offline. Controleer de irrigation-tap-bridge service."

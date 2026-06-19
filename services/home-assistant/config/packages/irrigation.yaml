@@ -1,0 +1,84 @@
+# Garden Irrigation — Phase 1 (tap-only)
+#
+# A single tap valve (Rain Bird XCZ-075-PRF, 24 VAC, normally-closed) driven by
+# a relay on Venus through an MQTT<->GPIO bridge
+# (infrastructure/ansible/roles/irrigation-tap-bridge). HA holds all policy: a
+# fixed-minutes run at 04:00, skipped when Buienradar's today+tomorrow rainfall
+# forecast exceeds a threshold. Full living plan: GitHub issue #4.
+#
+# Bridge MQTT topics (Mars Mosquitto, anonymous):
+#   irrigation/tap/set          <- ON/OFF (command from HA)
+#   irrigation/tap/state        -> ON/OFF (retained)
+#   irrigation/tap/availability -> online/offline (LWT)
+#
+# secrets.yaml (on Mars, gitignored) must define:
+#   signal_sender_number: "+31..."
+#   signal_recipient_number: "+31..."
+
+mqtt:
+  switch:
+    - name: "Irrigation tap"
+      unique_id: irrigation_tap
+      icon: mdi:water
+      command_topic: "irrigation/tap/set"
+      state_topic: "irrigation/tap/state"
+      availability_topic: "irrigation/tap/availability"
+      payload_on: "ON"
+      payload_off: "OFF"
+      payload_available: "online"
+      payload_not_available: "offline"
+      qos: 1
+      retain: false
+
+input_boolean:
+  # Master enable. Left to restore across restarts (no `initial`) so a reboot
+  # mid-holiday doesn't silently disable watering. Defaults off until set.
+  irrigation_enabled:
+    name: "Irrigatie ingeschakeld"
+    icon: mdi:water-pump
+
+input_number:
+  irrigation_run_minutes:
+    name: "Irrigatie looptijd"
+    initial: 10
+    min: 1
+    max: 30
+    step: 1
+    unit_of_measurement: "min"
+    icon: mdi:timer-sand
+  irrigation_rain_skip_mm:
+    name: "Regen skip drempel (vandaag + morgen)"
+    initial: 5
+    min: 0
+    max: 30
+    step: 0.5
+    unit_of_measurement: "mm"
+    icon: mdi:weather-rainy
+
+# Rainfall forecast straight from Buienradar's public JSON feed (no API key).
+# Two raw sensors — today and tomorrow — the automation sums them. state_class
+# gives permanent long-term rain history automatically.
+rest:
+  - resource: "https://data.buienradar.nl/2.0/feed/json"
+    scan_interval: 3600
+    sensor:
+      - name: "Rain forecast today"
+        unique_id: rain_forecast_today
+        value_template: "{{ value_json.forecast.fivedayforecast[0].mmRainMax | float(0) }}"
+        unit_of_measurement: "mm"
+        device_class: precipitation
+        state_class: measurement
+      - name: "Rain forecast tomorrow"
+        unique_id: rain_forecast_tomorrow
+        value_template: "{{ value_json.forecast.fivedayforecast[1].mmRainMax | float(0) }}"
+        unit_of_measurement: "mm"
+        device_class: precipitation
+        state_class: measurement
+
+notify:
+  - name: signal_irrigation
+    platform: signal_messenger
+    url: "http://localhost:8081"
+    number: !secret signal_sender_number
+    recipients:
+      - !secret signal_recipient_number

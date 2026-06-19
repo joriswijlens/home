@@ -1,0 +1,6 @@
+---
+- name: Restart irrigation-tap-bridge
+  ansible.builtin.systemd:
+    name: irrigation-tap-bridge
+    state: restarted
+    daemon_reload: true

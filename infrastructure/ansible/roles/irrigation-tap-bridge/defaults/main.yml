@@ -1,0 +1,27 @@
+---
+# Irrigation tap MQTT<->GPIO bridge (Phase 1) — Venus.
+# Override per-host in inventory or playbook vars as the hardware is wired.
+
+irrigation_tap_script_path: /opt/smartworkx/irrigation-tap/irrigation_tap_bridge.py
+
+# MQTT broker (Mars Mosquitto, anonymous). Use bare `mars` — on this network
+# mars.local (mDNS) does not resolve from Venus, but `mars`/`mars.home` do.
+irrigation_tap_mqtt_host: mars
+irrigation_tap_mqtt_port: 1883
+irrigation_tap_topic_base: irrigation/tap
+
+# GPIO. 'real' uses lgpio on /dev/gpiochip{{ chip }}; 'stub' just logs.
+irrigation_tap_gpio_backend: real
+irrigation_tap_gpio_chip: 0
+irrigation_tap_gpio_pin: 17
+# The wired board (blue 4-ch JQC-3FF opto board) is LOW-level trigger, so the
+# relay energises (valve open) when the pin is LOW => active_high=false.
+# Fail-safe verified empirically (2026-06-10): with the pin undriven through a
+# full Venus boot the channel LED only glows faintly (BCM17's ~50k pull-down
+# leaks far less than the opto needs) and the NO contact stays open (Fluke: OL).
+irrigation_tap_active_high: false
+
+# Watchdog: force the valve closed after this many seconds no matter what.
+# Must exceed the longest intended HA run (input_number.irrigation_run_minutes,
+# Phase 1 max 30 min). 2400 s = 40 min leaves margin.
+irrigation_tap_max_on_seconds: 2400
