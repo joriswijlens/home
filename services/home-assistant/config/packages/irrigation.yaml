@@ -48,12 +48,20 @@ input_number:
     icon: mdi:timer-sand
   irrigation_rain_skip_mm:
     name: "Regen skip drempel (vandaag + morgen)"
-    initial: 5
+    initial: 10
     min: 0
     max: 30
     step: 0.5
     unit_of_measurement: "mm"
     icon: mdi:weather-rainy
+  irrigation_hot_override_c:
+    name: "Hitte override drempel"
+    initial: 25
+    min: 15
+    max: 40
+    step: 0.5
+    unit_of_measurement: "°C"
+    icon: mdi:thermometer-high
 
 # Rainfall forecast straight from Buienradar's public JSON feed (no API key).
 # Two raw sensors — today and tomorrow — the automation sums them. state_class
@@ -73,6 +81,12 @@ rest:
         value_template: "{{ value_json.forecast.fivedayforecast[1].mmRainMax | float(0) }}"
         unit_of_measurement: "mm"
         device_class: precipitation
+        state_class: measurement
+      - name: "Temp forecast today"
+        unique_id: temp_forecast_today
+        value_template: "{{ value_json.forecast.fivedayforecast[0].maxtemperatureMax | float(0) }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
         state_class: measurement
 
 notify:

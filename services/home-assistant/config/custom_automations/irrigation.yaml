@@ -5,7 +5,10 @@
 # still auto-closes, so this automation can stay a simple open -> wait -> close.
 
 - alias: "Irrigatie: dagelijkse run"
-  description: "04:00 vaste looptijd; overslaan als regen (vandaag + morgen) boven drempel of als de bridge offline is."
+  description: >-
+    04:00 vaste looptijd; overslaan als regen (vandaag + morgen) boven drempel,
+    behalve bij hitte (max temp >= hitte-override, dan altijd water geven), of
+    als de bridge offline is.
   triggers:
     - trigger: time
       at: "04:00:00"
@@ -20,6 +23,9 @@
     rain_total: "{{ rain_today + rain_tomorrow }}"
     rain_threshold: "{{ states('input_number.irrigation_rain_skip_mm') | float(5) }}"
     run_minutes: "{{ states('input_number.irrigation_run_minutes') | float(10) }}"
+    temp_today: "{{ states('sensor.temp_forecast_today') | float(0) }}"
+    hot_override: "{{ states('input_number.irrigation_hot_override_c') | float(25) }}"
+    is_hot: "{{ temp_today >= hot_override }}"
   actions:
     # Guard: bridge unreachable -> don't pretend to water, alert instead.
     - if:
@@ -33,10 +39,12 @@
             message: "Run overgeslagen: tap-bridge (Venus) is offline."
         - stop: "bridge offline"
 
-    # Rain skip.
+    # Rain skip — unless it's hot enough that the garden needs water anyway.
     - if:
         - condition: template
           value_template: "{{ rain_total > rain_threshold }}"
+        - condition: template
+          value_template: "{{ not is_hot }}"
       then:
         - service: notify.signal_irrigation
           data:
@@ -44,6 +52,8 @@
             message: >-
               Overgeslagen: {{ rain_total | round(1) }} mm regen verwacht
               (vandaag + morgen), drempel {{ rain_threshold }} mm.
+              Max temp {{ temp_today | round(1) }}°C onder hitte-drempel
+              {{ hot_override }}°C.
         - stop: "rain skip"
 
     # Run.
@@ -59,9 +69,15 @@
       data:
         title: "Irrigatie"
         message: >-
+          {% if rain_total > rain_threshold and is_hot %}
+          Klaar: {{ run_minutes | int }} min gedraaid ondanks
+          {{ rain_total | round(1) }} mm regen — hitte-override actief
+          (max {{ temp_today | round(1) }}°C ≥ {{ hot_override }}°C).
+          {% else %}
           Klaar: {{ run_minutes | int }} min gedraaid
           ({{ rain_total | round(1) }} mm regen verwacht, onder drempel
           {{ rain_threshold }} mm).
+          {% endif %}
 
 - alias: "Irrigatie: trafo-stekker volgt de tap"
   description: >-
