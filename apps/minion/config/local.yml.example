@@ -11,3 +11,11 @@ tools:
 
 github:
   repo: ""          # set to owner/name to poll, leave empty to run the API only
+
+# Webhook secrets — better via env (MINION_WEBHOOKS__SECRETS__HA=...) than on disk.
+# A source without one refuses to start: an open /hooks route runs the agent, which
+# spends money and executes shell and git tools.
+# webhooks:
+#   secrets:
+#     ha: "generate-with-openssl-rand-hex-32"
+#   allow_bearer: ["ha"]   # LAN senders that cannot sign; never for external ones

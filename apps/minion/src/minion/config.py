@@ -53,6 +53,16 @@ class StoreConfig(BaseModel):
     db_path: str = "/data/minion.db"
 
 
+class WebhooksConfig(BaseModel):
+    # Per-source secrets, e.g. MINION_WEBHOOKS__SECRETS__HA=... — a source with no
+    # secret refuses to register rather than serving an open route.
+    secrets: dict[str, str] = {}
+    # Bearer sends the secret on every request, so it is for LAN senders that cannot
+    # compute an HMAC. Keep it off for anything reachable from outside.
+    allow_bearer: list[str] = []
+    max_per_minute: int = 30
+
+
 class TasksConfig(BaseModel):
     # A claim this old with no terminal event is treated as abandoned, so a run that
     # died mid-flight doesn't leave the task silently skipped forever. Must stay
@@ -103,6 +113,7 @@ class Settings(BaseSettings):
     github: GitHubConfig = GitHubConfig()
     store: StoreConfig = StoreConfig()
     tasks: TasksConfig = TasksConfig()
+    webhooks: WebhooksConfig = WebhooksConfig()
 
     @classmethod
     def settings_customise_sources(
