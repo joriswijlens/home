@@ -1,12 +1,14 @@
-"""The seam between minion and whichever model provider runs a flow.
+"""The seam between minion and whichever model backend runs a flow.
 
 `Agent` is deliberately narrow: a flow hands over a system prompt and a task, and gets
-text back. Everything provider-shaped — client, request format, message and tool-result
-structure, the tool-use loop — lives behind it, because those shapes differ per provider
+text back. Everything backend-shaped — client, request format, message and tool-result
+structure, the tool-use loop — lives behind it, because those shapes differ per backend
 and leak through any interface that passes them around.
 
-Switching to a cheaper provider means adding one module next to `claude_api.py` and
-changing `agent.provider` in config.
+"Provider" is reserved for the task side (GitHub, Jira, Vikunja); this is the model side.
+
+Switching to a cheaper model backend means adding one module next to `claude_api.py`
+and changing `agent.backend` in config.
 """
 
 from typing import Protocol, runtime_checkable
@@ -29,14 +31,14 @@ class Agent(Protocol):
 
 
 def create_agent(config: Settings, tool_registry: ToolRegistry) -> Agent:
-    provider = config.agent.provider
+    backend = config.agent.backend
 
-    if provider == "claude_api":
+    if backend == "claude_api":
         from minion.agents.claude_api import ClaudeApiAgent
 
         return ClaudeApiAgent(config, tool_registry)
 
     raise ValueError(
-        f"Unknown agent provider: {provider!r}. "
+        f"Unknown agent backend: {backend!r}. "
         f"Add a module under minion/agents/ and register it here."
     )

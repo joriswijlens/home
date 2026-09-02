@@ -9,7 +9,19 @@ from pydantic_settings import (
     YamlConfigSettingsSource,
 )
 
-from minion.github.config import GitHubConfig
+
+
+class GitHubConfig(BaseModel):
+    repo: str = ""
+    poll_interval: int = 60
+    labels: dict[str, str] = {
+        "plan": "minion:plan",
+        "planning": "minion:planning",
+        "planned": "minion:planned",
+        "implement": "minion:implement",
+        "implementing": "minion:implementing",
+        "done": "minion:done",
+    }
 
 
 class ApiConfig(BaseModel):
@@ -19,7 +31,7 @@ class ApiConfig(BaseModel):
 
 class AgentConfig(BaseModel):
     name: str = "venus"
-    provider: str = "claude_api"
+    backend: str = "claude_api"
     model: str = "claude-sonnet-5"
     max_tokens: int = 16000
     effort: str = "medium"

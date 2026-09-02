@@ -1,6 +1,7 @@
 import json
 import logging
 import sqlite3
+import threading
 from datetime import datetime, timezone
 from typing import Callable
 
@@ -18,9 +19,12 @@ class EventStore:
     """
 
     def __init__(self, db_path: str, agent: str) -> None:
-        self._conn = sqlite3.connect(db_path)
+        # Writes arrive from the asyncio loop and from FastAPI's request threadpool
+        # (a webhook), so the connection is shared across threads and guarded here.
+        self._conn = sqlite3.connect(db_path, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA journal_mode=WAL")
+        self._lock = threading.Lock()
         self._agent = agent
         self._subscribers: list[Subscriber] = []
         self._create_tables()
@@ -51,18 +55,19 @@ class EventStore:
             "payload": payload or {},
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
-        self._conn.execute(
-            "INSERT INTO events (task_id, agent, type, payload, timestamp) "
-            "VALUES (?, ?, ?, ?, ?)",
-            (
-                event["task_id"],
-                event["agent"],
-                event["type"],
-                json.dumps(event["payload"]),
-                event["timestamp"],
-            ),
-        )
-        self._conn.commit()
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO events (task_id, agent, type, payload, timestamp) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (
+                    event["task_id"],
+                    event["agent"],
+                    event["type"],
+                    json.dumps(event["payload"]),
+                    event["timestamp"],
+                ),
+            )
+            self._conn.commit()
         self._notify(event)
         return event
 
@@ -74,17 +79,19 @@ class EventStore:
                 logger.exception("Subscriber failed for %s event", event["type"])
 
     def events_for(self, task_id: str) -> list[dict]:
-        rows = self._conn.execute(
-            "SELECT task_id, agent, type, payload, timestamp FROM events "
-            "WHERE task_id = ? ORDER BY id",
-            (task_id,),
-        ).fetchall()
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT task_id, agent, type, payload, timestamp FROM events "
+                "WHERE task_id = ? ORDER BY id",
+                (task_id,),
+            ).fetchall()
         return [self._row_to_event(row) for row in rows]
 
     def is_known(self, task_id: str) -> bool:
-        row = self._conn.execute(
-            "SELECT 1 FROM events WHERE task_id = ? LIMIT 1", (task_id,)
-        ).fetchone()
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT 1 FROM events WHERE task_id = ? LIMIT 1", (task_id,)
+            ).fetchone()
         return row is not None
 
     @staticmethod

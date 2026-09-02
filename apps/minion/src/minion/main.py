@@ -3,13 +3,16 @@ import logging
 
 import uvicorn
 
+from minion.agents import create_agent
 from minion.api import create_app
 from minion.config import load_config
 from minion.events import EventDispatcher
-from minion.github import register_github
+from minion.flows import registry as flow_registry
 from minion.handlers.chat import ChatHandler
+from minion.providers.github import GitHubProvider
 from minion.store import EventStore, log_events
 from minion.tools import create_registry
+from minion.worker import Worker
 
 logging.basicConfig(
     level=logging.INFO,
@@ -34,7 +37,21 @@ async def run() -> None:
 
     app = create_app(dispatcher)
 
-    github_source = register_github(config, dispatcher, tool_registry, store)
+    providers = {}
+    if config.github.repo:
+        providers["github"] = GitHubProvider(config, store)
+    else:
+        logger.info("GitHub disabled (no repo configured)")
+
+    if providers:
+        dispatcher.register(
+            Worker(
+                create_agent(config, tool_registry),
+                store,
+                providers,
+                flow_registry(),
+            )
+        )
 
     server = uvicorn.Server(
         uvicorn.Config(
@@ -46,11 +63,9 @@ async def run() -> None:
     )
 
     tasks = [server.serve()]
-    if github_source:
-        tasks.append(github_source.start(dispatcher))
-        logger.info("GitHub source started")
-    else:
-        logger.info("GitHub disabled (no repo configured)")
+    for name, provider in providers.items():
+        tasks.append(provider.start(dispatcher))
+        logger.info("Provider started: %s", name)
 
     try:
         await asyncio.gather(*tasks)

@@ -12,7 +12,7 @@ def deps():
     return config, create_registry(config.tools)
 
 
-def test_default_provider_is_the_claude_api_agent(deps):
+def test_default_backend_is_the_claude_api_agent(deps):
     config, tools = deps
     assert isinstance(create_agent(config, tools), ClaudeApiAgent)
 
@@ -22,9 +22,9 @@ def test_claude_api_agent_satisfies_the_protocol(deps):
     assert isinstance(create_agent(config, tools), Agent)
 
 
-def test_unknown_provider_is_rejected(deps):
+def test_unknown_backend_is_rejected(deps):
     config, tools = deps
-    config.agent.provider = "some-cheaper-llm"
+    config.agent.backend = "some-cheaper-llm"
 
     with pytest.raises(ValueError, match="some-cheaper-llm"):
         create_agent(config, tools)
