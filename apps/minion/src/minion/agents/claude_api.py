@@ -1,9 +1,7 @@
-"""The one place that talks to a model provider.
+"""Agent backed by the Anthropic Messages API.
 
-Everything provider-specific lives here — client construction, request shape, content
-block handling. Handlers pass a system prompt, a conversation and a tool registry, and
-get text back. Switching to another provider is a rewrite of this file and nothing else;
-it is deliberately not a plugin interface, since there is exactly one provider today.
+The only module that imports `anthropic`. Message and tool-result shapes here are
+Anthropic's, and stay inside this file.
 """
 
 import logging
@@ -18,7 +16,7 @@ from minion.tools import ToolRegistry
 logger = logging.getLogger(__name__)
 
 
-class AgentRunner:
+class ClaudeApiAgent:
     def __init__(self, config: Settings, tool_registry: ToolRegistry) -> None:
         self._client = anthropic.AsyncAnthropic(api_key=config.anthropic_api_key)
         self._model = config.agent.model
@@ -29,11 +27,27 @@ class AgentRunner:
     async def run(
         self,
         system_prompt: str,
+        prompt: str,
+        max_rounds: int,
+        label: str = "agent",
+    ) -> str:
+        conversation = Conversation(max_history=200)
+        conversation.add_user(prompt)
+        return await self.run_conversation(
+            system_prompt, conversation, max_rounds, label
+        )
+
+    async def run_conversation(
+        self,
+        system_prompt: str,
         conversation: Conversation,
         max_rounds: int,
         label: str = "agent",
     ) -> str:
-        """Run the tool-use loop until the model stops, or the round budget runs out."""
+        """Run the tool-use loop over an existing conversation.
+
+        Only for callers that keep history across turns; flows use `run`.
+        """
         tools = self._tools.list_tools()
 
         for _ in range(max_rounds):

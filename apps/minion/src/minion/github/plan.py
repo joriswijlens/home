@@ -3,9 +3,8 @@ import logging
 from datetime import timedelta
 import re
 
-from minion.agent import AgentRunner
+from minion.agents import Agent, create_agent
 from minion.config import Settings
-from minion.conversation import Conversation
 from minion.events import Event, EventHandler
 from minion.state import CLAIMED, COMPLETED, FAILED, is_claimed
 from minion.store import EventStore
@@ -63,7 +62,7 @@ class PlanHandler(EventHandler):
         tool_registry: ToolRegistry,
         store: EventStore,
     ) -> None:
-        self._runner = AgentRunner(config, tool_registry)
+        self._agent: Agent = create_agent(config, tool_registry)
         self._github = config.github
         self._config = config
         self._store = store
@@ -95,13 +94,13 @@ class PlanHandler(EventHandler):
         )
 
         try:
-            conversation = Conversation(max_history=100)
-            conversation.add_user(
+            plan = await self._agent.run(
+                SYSTEM_PROMPT,
                 f"GitHub Issue #{number}: {title}\n\n{body}\n\n"
-                f"Explore the codebase and create a detailed implementation plan."
+                f"Explore the codebase and create a detailed implementation plan.",
+                MAX_TOOL_ROUNDS,
+                "plan",
             )
-
-            plan = await self._runner.run(SYSTEM_PROMPT, conversation, MAX_TOOL_ROUNDS, "plan")
 
             branch = f"issue-{number}-{_slugify(title)}"
             await self._create_branch(branch)

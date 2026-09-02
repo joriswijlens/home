@@ -4,9 +4,8 @@ import logging
 from datetime import timedelta
 import re
 
-from minion.agent import AgentRunner
+from minion.agents import Agent, create_agent
 from minion.config import Settings
-from minion.conversation import Conversation
 from minion.events import Event, EventHandler
 from minion.state import CLAIMED, COMPLETED, FAILED, is_claimed
 from minion.store import EventStore
@@ -39,7 +38,7 @@ class ImplementHandler(EventHandler):
         tool_registry: ToolRegistry,
         store: EventStore,
     ) -> None:
-        self._runner = AgentRunner(config, tool_registry)
+        self._agent: Agent = create_agent(config, tool_registry)
         self._github = config.github
         self._config = config
         self._store = store
@@ -94,14 +93,14 @@ class ImplementHandler(EventHandler):
             await self._run_git(repo_path, "checkout", branch)
             await self._run_git(repo_path, "pull", "origin", branch)
 
-            conversation = Conversation(max_history=200)
-            conversation.add_user(
+            result = await self._agent.run(
+                SYSTEM_PROMPT,
                 f"GitHub Issue #{number}: {title}\n\n"
                 f"Approved plan:\n\n{plan}\n\n"
-                f"Implement this plan now. The branch `{branch}` is already checked out."
+                f"Implement this plan now. The branch `{branch}` is already checked out.",
+                MAX_TOOL_ROUNDS,
+                "implement",
             )
-
-            result = await self._runner.run(SYSTEM_PROMPT, conversation, MAX_TOOL_ROUNDS, "implement")
 
             await self._commit_and_push(repo_path, branch, number, title)
             await self._create_pr(number, title, branch)

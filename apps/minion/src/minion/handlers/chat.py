@@ -1,6 +1,6 @@
 import logging
 
-from minion.agent import AgentRunner
+from minion.agents.claude_api import ClaudeApiAgent
 from minion.config import Settings
 from minion.conversation import Conversation
 from minion.events import Event, EventHandler
@@ -19,7 +19,9 @@ class ChatHandler(EventHandler):
         config: Settings,
         tool_registry: ToolRegistry,
     ) -> None:
-        self._runner = AgentRunner(config, tool_registry)
+        # Chat is out of scope per the design; it holds provider-specific
+        # conversation state, so it binds to the concrete agent.
+        self._agent = ClaudeApiAgent(config, tool_registry)
         self._system_prompt = config.agent.system_prompt.format(name=config.agent.name)
         self._conversation = Conversation(config.conversation.max_history)
 
@@ -29,6 +31,6 @@ class ChatHandler(EventHandler):
             return None
 
         self._conversation.add_user(content)
-        return await self._runner.run(
+        return await self._agent.run_conversation(
             self._system_prompt, self._conversation, MAX_TOOL_ROUNDS, "chat"
         )

@@ -1,5 +1,6 @@
 agent:
   name: venus
+  provider: claude_api
   model: claude-sonnet-5
   max_tokens: 16000
   effort: medium

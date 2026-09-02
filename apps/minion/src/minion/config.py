@@ -19,6 +19,7 @@ class ApiConfig(BaseModel):
 
 class AgentConfig(BaseModel):
     name: str = "venus"
+    provider: str = "claude_api"
     model: str = "claude-sonnet-5"
     max_tokens: int = 16000
     effort: str = "medium"
