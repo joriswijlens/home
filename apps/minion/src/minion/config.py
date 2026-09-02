@@ -25,8 +25,9 @@ class ApiConfig(BaseModel):
 
 class AgentConfig(BaseModel):
     name: str = "venus"
-    model: str = "claude-sonnet-4-5-20250929"
-    max_tokens: int = 4096
+    model: str = "claude-sonnet-5"
+    max_tokens: int = 16000
+    effort: str = "medium"
     system_prompt: str = (
         "You are a helpful home automation assistant called {name}. "
         "You help manage infrastructure, write code, and automate tasks. "

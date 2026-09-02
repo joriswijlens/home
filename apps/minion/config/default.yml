@@ -1,7 +1,8 @@
 agent:
   name: venus
-  model: claude-sonnet-4-5-20250929
-  max_tokens: 4096
+  model: claude-sonnet-5
+  max_tokens: 16000
+  effort: medium
   system_prompt: >-
     You are a helpful home automation assistant called {name}.
     You help manage infrastructure, write code, and automate tasks.

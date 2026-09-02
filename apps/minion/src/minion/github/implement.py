@@ -44,6 +44,7 @@ class ImplementHandler(EventHandler):
         self._client = anthropic.AsyncAnthropic(api_key=config.anthropic_api_key)
         self._model = config.agent.model
         self._max_tokens = config.agent.max_tokens
+        self._effort = config.agent.effort
         self._tools = tool_registry
         self._github = config.github
         self._config = config
@@ -171,6 +172,7 @@ class ImplementHandler(EventHandler):
                 system=SYSTEM_PROMPT,
                 messages=conversation.messages,
                 tools=tools or anthropic.NOT_GIVEN,
+                output_config={"effort": self._effort},
             )
 
             conversation.add_assistant(response.content)

@@ -24,6 +24,7 @@ class ChatHandler(EventHandler):
         self._client = anthropic.AsyncAnthropic(api_key=config.anthropic_api_key)
         self._model = config.agent.model
         self._max_tokens = config.agent.max_tokens
+        self._effort = config.agent.effort
         self._system_prompt = config.agent.system_prompt.format(name=config.agent.name)
         self._tools = tool_registry
         self._conversation = Conversation(config.conversation.max_history)
@@ -46,6 +47,7 @@ class ChatHandler(EventHandler):
                 system=self._system_prompt,
                 messages=self._conversation.messages,
                 tools=tools or anthropic.NOT_GIVEN,
+                output_config={"effort": self._effort},
             )
 
             self._conversation.add_assistant(response.content)
