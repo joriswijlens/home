@@ -11,10 +11,37 @@ Switching to a cheaper model backend means adding one module next to `claude_api
 and changing `agent.backend` in config.
 """
 
+from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 
 from minion.config import Settings
 from minion.tools import ToolRegistry
+
+
+@dataclass
+class RunResult:
+    """What a run produced, and what it cost.
+
+    Usage is provider-neutral on purpose — every backend can report tokens in and out,
+    and without them there is no way to enforce a spend ceiling or to see cost in
+    Grafana.
+    """
+
+    text: str
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cache_read_tokens: int = 0
+
+    @property
+    def total_tokens(self) -> int:
+        return self.input_tokens + self.output_tokens + self.cache_read_tokens
+
+    def usage(self) -> dict:
+        return {
+            "input_tokens": self.input_tokens,
+            "output_tokens": self.output_tokens,
+            "cache_read_tokens": self.cache_read_tokens,
+        }
 
 
 @runtime_checkable
@@ -25,8 +52,8 @@ class Agent(Protocol):
         prompt: str,
         max_rounds: int,
         label: str = "agent",
-    ) -> str:
-        """Run a task to completion and return the final text."""
+    ) -> RunResult:
+        """Run a task to completion, returning its text and what it cost."""
         ...
 
 

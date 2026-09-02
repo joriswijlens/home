@@ -9,6 +9,7 @@ from typing import Any
 
 import anthropic
 
+from minion.agents import RunResult
 from minion.config import Settings
 from minion.conversation import Conversation
 from minion.tools import ToolRegistry
@@ -30,7 +31,7 @@ class ClaudeApiAgent:
         prompt: str,
         max_rounds: int,
         label: str = "agent",
-    ) -> str:
+    ) -> RunResult:
         conversation = Conversation(max_history=200)
         conversation.add_user(prompt)
         return await self.run_conversation(
@@ -43,12 +44,10 @@ class ClaudeApiAgent:
         conversation: Conversation,
         max_rounds: int,
         label: str = "agent",
-    ) -> str:
-        """Run the tool-use loop over an existing conversation.
-
-        Only for callers that keep history across turns; flows use `run`.
-        """
+    ) -> RunResult:
+        """Run the tool-use loop over an existing conversation."""
         tools = self._tools.list_tools()
+        result = RunResult(text="")
 
         for _ in range(max_rounds):
             response = await self._client.messages.create(
@@ -60,16 +59,28 @@ class ClaudeApiAgent:
                 output_config={"effort": self._effort},
             )
 
+            self._add_usage(result, response)
             conversation.add_assistant(response.content)
 
             if response.stop_reason == "tool_use":
                 await self._handle_tool_use(response.content, conversation, label)
                 continue
 
-            return self._extract_text(response.content)
+            result.text = self._extract_text(response.content)
+            return result
 
         logger.warning("%s reached max tool rounds (%d)", label, max_rounds)
-        return f"{label} reached the maximum number of tool rounds."
+        result.text = f"{label} reached the maximum number of tool rounds."
+        return result
+
+    @staticmethod
+    def _add_usage(result: RunResult, response) -> None:
+        usage = getattr(response, "usage", None)
+        if usage is None:
+            return
+        result.input_tokens += getattr(usage, "input_tokens", 0) or 0
+        result.output_tokens += getattr(usage, "output_tokens", 0) or 0
+        result.cache_read_tokens += getattr(usage, "cache_read_input_tokens", 0) or 0
 
     async def _handle_tool_use(
         self, content: list[Any], conversation: Conversation, label: str

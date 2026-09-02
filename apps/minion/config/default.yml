@@ -35,6 +35,9 @@ store:
 tasks:
   claim_stale_minutes: 30
   max_attempts: 3
+  run_timeout_minutes: 20
+  max_concurrent_runs: 1
+  daily_token_budget: 0
 
 github:
   repo: ""

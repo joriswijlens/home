@@ -68,6 +68,32 @@ def has_event(events: list[dict], type: str) -> bool:
     return any(event["type"] == type for event in events)
 
 
+def tokens_used(events: list[dict]) -> int:
+    """Total tokens recorded across events — the basis for a spend ceiling."""
+    total = 0
+    for event in events:
+        usage = event["payload"].get("usage")
+        if usage:
+            total += sum(int(v or 0) for v in usage.values())
+    return total
+
+
+def stale_claims(last_events: list[dict], now: datetime | None = None,
+                 stale_after: timedelta = timedelta(minutes=30)) -> list[dict]:
+    """Claims with nothing after them, old enough to count as abandoned.
+
+    These are runs whose worker died — the label is still marked in progress while
+    nothing is working on it, so it has to be handed back explicitly.
+    """
+    now = now or datetime.now(timezone.utc)
+    return [
+        event
+        for event in last_events
+        if event["type"] == CLAIMED
+        and now - _parse(event["timestamp"]) > stale_after
+    ]
+
+
 def should_pick_up(events: list[dict], max_attempts: int = 3,
                    now: datetime | None = None,
                    stale_after: timedelta = timedelta(minutes=30)) -> bool:

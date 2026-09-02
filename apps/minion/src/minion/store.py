@@ -94,6 +94,25 @@ class EventStore:
             ).fetchone()
         return row is not None
 
+    def since(self, timestamp: str) -> list[dict]:
+        """Every event newer than a timestamp, across all tasks."""
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT task_id, agent, type, payload, timestamp FROM events "
+                "WHERE timestamp > ? ORDER BY id",
+                (timestamp,),
+            ).fetchall()
+        return [self._row_to_event(row) for row in rows]
+
+    def last_events(self) -> list[dict]:
+        """The most recent event per task — enough to spot claims nothing followed."""
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT task_id, agent, type, payload, timestamp FROM events e "
+                "WHERE id = (SELECT MAX(id) FROM events WHERE task_id = e.task_id)"
+            ).fetchall()
+        return [self._row_to_event(row) for row in rows]
+
     @staticmethod
     def _row_to_event(row: sqlite3.Row) -> dict:
         event = dict(row)

@@ -8,17 +8,27 @@ from minion.api import create_app
 from minion.config import load_config
 from minion.events import EventDispatcher
 from minion.flows import registry as flow_registry
-from minion.handlers.chat import ChatHandler
 from minion.providers.github import GitHubProvider
 from minion.store import EventStore, log_events
 from minion.tools import create_registry
-from minion.worker import Worker
+from minion.worker import Worker, reclaim_stale
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+
+async def _sweep_forever(store, providers, tasks) -> None:
+    """Hand back tasks whose worker died, so a crash isn't a silent dead end."""
+    interval = max(60, tasks.claim_stale_minutes * 60 // 2)
+    while True:
+        await asyncio.sleep(interval)
+        try:
+            await reclaim_stale(store, providers, tasks)
+        except Exception:
+            logger.exception("Sweep failed")
 
 
 async def run() -> None:
@@ -32,10 +42,7 @@ async def run() -> None:
     tool_registry = create_registry(config.tools)
     dispatcher = EventDispatcher()
 
-    chat_handler = ChatHandler(config, tool_registry)
-    dispatcher.register(chat_handler)
-
-    app = create_app(dispatcher)
+    app = create_app()
 
     providers = {}
     if config.github.repo:
@@ -50,6 +57,7 @@ async def run() -> None:
                 store,
                 providers,
                 flow_registry(),
+                config.tasks,
             )
         )
 
@@ -66,6 +74,9 @@ async def run() -> None:
     for name, provider in providers.items():
         tasks.append(provider.start(dispatcher))
         logger.info("Provider started: %s", name)
+
+    if providers:
+        tasks.append(_sweep_forever(store, providers, config.tasks))
 
     try:
         await asyncio.gather(*tasks)

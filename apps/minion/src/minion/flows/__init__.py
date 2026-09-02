@@ -8,7 +8,7 @@ all belong to the provider.
 from dataclasses import dataclass
 from typing import Callable
 
-from minion.agents import Agent
+from minion.agents import Agent, RunResult
 
 
 @dataclass
@@ -18,14 +18,18 @@ class Flow:
     max_rounds: int
     build_prompt: Callable[[dict], str]
 
-    async def run(self, agent: Agent, context: dict) -> dict:
-        result = await agent.run(
+    async def run(self, agent: Agent, context: dict) -> tuple[dict, RunResult]:
+        run = await agent.run(
             self.system_prompt,
             self.build_prompt(context),
             self.max_rounds,
             self.name,
         )
-        return {"result": result, **{k: context[k] for k in ("branch",) if k in context}}
+        report = {
+            "result": run.text,
+            **{k: context[k] for k in ("branch",) if k in context},
+        }
+        return report, run
 
 
 def registry() -> dict[str, Flow]:

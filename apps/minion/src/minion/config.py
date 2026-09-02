@@ -55,11 +55,20 @@ class StoreConfig(BaseModel):
 
 class TasksConfig(BaseModel):
     # A claim this old with no terminal event is treated as abandoned, so a run that
-    # died mid-flight doesn't leave the task silently skipped forever.
+    # died mid-flight doesn't leave the task silently skipped forever. Must stay
+    # comfortably above run_timeout_minutes, or a task still running gets handed to a
+    # second worker — the duplicate run the claim exists to prevent.
     claim_stale_minutes: int = 30
     # Bounded retries: an always-failing task would otherwise be retried on every poll,
     # and every retry is a paid model run.
     max_attempts: int = 3
+    # Hard stop for a single run. A wedged agent otherwise holds its claim until the
+    # staleness window expires and burns tokens the whole time.
+    run_timeout_minutes: int = 20
+    # Runs are the memory-hungry part; on a Pi 3 more than one at a time is an OOM.
+    max_concurrent_runs: int = 1
+    # Spend ceiling per rolling 24h, counted from the log. 0 disables the check.
+    daily_token_budget: int = 0
 
 
 class ConversationConfig(BaseModel):
