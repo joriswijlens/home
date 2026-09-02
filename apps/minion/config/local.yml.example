@@ -1,0 +1,13 @@
+# Copy to local.yml for a laptop run — gitignored, and loaded last so it wins.
+# Overrides the deployment's absolute paths; nothing else needs to change.
+store:
+  db_path: "./minion.db"
+
+tools:
+  allowed_paths:
+    - /tmp
+  git_repos:
+    - .
+
+github:
+  repo: ""          # set to owner/name to poll, leave empty to run the API only

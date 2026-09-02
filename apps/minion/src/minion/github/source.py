@@ -1,18 +1,24 @@
 import asyncio
 import json
 import logging
+from datetime import timedelta
 
+from minion.config import TasksConfig
 from minion.events import Event, EventDispatcher, EventSource
 from minion.github.config import GitHubConfig
-from minion.store import TaskStore
+from minion.state import should_pick_up
+from minion.store import EventStore
 
 logger = logging.getLogger(__name__)
 
 
 class GitHubEventSource(EventSource):
-    def __init__(self, config: GitHubConfig, store: TaskStore) -> None:
+    def __init__(
+        self, config: GitHubConfig, store: EventStore, tasks: TasksConfig
+    ) -> None:
         self._config = config
         self._store = store
+        self._tasks = tasks
         self._running = False
 
     async def start(self, dispatcher: EventDispatcher) -> None:
@@ -44,7 +50,12 @@ class GitHubEventSource(EventSource):
                 number = issue["number"]
                 task_id = f"{task_prefix}{number}"
 
-                if self._store.is_known(task_id):
+                events = self._store.events_for(task_id)
+                if not should_pick_up(
+                    events,
+                    max_attempts=self._tasks.max_attempts,
+                    stale_after=timedelta(minutes=self._tasks.claim_stale_minutes),
+                ):
                     continue
 
                 logger.info(

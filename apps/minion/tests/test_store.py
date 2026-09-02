@@ -1,79 +1,109 @@
-import tempfile
-from pathlib import Path
+import json
 
 import pytest
 
-from minion.store import TaskStore
+from minion.store import EventStore
 
 
 @pytest.fixture
-def store(tmp_path: Path) -> TaskStore:
-    s = TaskStore(str(tmp_path / "test.db"))
+def store(tmp_path):
+    s = EventStore(str(tmp_path / "test.db"), agent="venus")
     yield s
     s.close()
 
 
-def test_create_task(store: TaskStore) -> None:
-    result = store.create_task("t1", "github", "42", "venus", "Fix bug")
-    assert result is True
-    task = store.get_task("t1")
-    assert task is not None
-    assert task["source"] == "github"
-    assert task["external_ref"] == "42"
-    assert task["agent"] == "venus"
-    assert task["status"] == "claimed"
-    assert task["title"] == "Fix bug"
+def test_append_and_read_back(store):
+    store.append("task-1", "claimed", {"issue": 7})
+
+    events = store.events_for("task-1")
+    assert len(events) == 1
+    assert events[0]["type"] == "claimed"
+    assert events[0]["agent"] == "venus"
+    assert events[0]["payload"] == {"issue": 7}
 
 
-def test_is_known(store: TaskStore) -> None:
-    assert store.is_known("t1") is False
-    store.create_task("t1", "github", "1", "venus", "Task")
-    assert store.is_known("t1") is True
+def test_events_are_ordered(store):
+    store.append("task-1", "claimed")
+    store.append("task-1", "plan_posted")
+    store.append("task-1", "completed")
+
+    assert [e["type"] for e in store.events_for("task-1")] == [
+        "claimed",
+        "plan_posted",
+        "completed",
+    ]
 
 
-def test_update_status(store: TaskStore) -> None:
-    store.create_task("t1", "github", "1", "venus", "Task")
-    store.update_status("t1", "done")
-    task = store.get_task("t1")
-    assert task is not None
-    assert task["status"] == "done"
+def test_events_are_scoped_to_their_task(store):
+    store.append("task-1", "claimed")
+    store.append("task-2", "claimed")
+
+    assert len(store.events_for("task-1")) == 1
+    assert store.events_for("task-3") == []
 
 
-def test_duplicate_insert_ignored(store: TaskStore) -> None:
-    first = store.create_task("t1", "github", "1", "venus", "First")
-    assert first is True
-    second = store.create_task("t1", "github", "1", "mars", "Second")
-    assert second is False
-    task = store.get_task("t1")
-    assert task is not None
-    assert task["agent"] == "venus"
+def test_is_known(store):
+    assert not store.is_known("task-1")
+    store.append("task-1", "claimed")
+    assert store.is_known("task-1")
 
 
-def test_conversation_messages(store: TaskStore) -> None:
-    store.create_task("t1", "github", "1", "venus", "Task")
-    store.add_message("t1", "user", "Hello")
-    store.add_message("t1", "assistant", "Hi there")
+def test_subscribers_are_notified(store):
+    seen = []
+    store.subscribe(seen.append)
 
-    messages = store.get_conversation("t1")
-    assert len(messages) == 2
-    assert messages[0]["role"] == "user"
-    assert messages[0]["content"] == "Hello"
-    assert messages[1]["role"] == "assistant"
-    assert messages[1]["content"] == "Hi there"
+    store.append("task-1", "claimed", {"issue": 7})
+
+    assert len(seen) == 1
+    assert seen[0]["type"] == "claimed"
+    assert seen[0]["payload"] == {"issue": 7}
 
 
-def test_list_tasks(store: TaskStore) -> None:
-    store.create_task("t1", "github", "1", "venus", "Task 1")
-    store.create_task("t2", "github", "2", "venus", "Task 2")
-    store.update_status("t1", "done")
+def test_failing_subscriber_does_not_fail_the_append(store):
+    """The write is already durable — a broken listener must not report it as failed."""
+    def explode(event):
+        raise RuntimeError("Loki unreachable")
 
-    all_tasks = store.list_tasks()
-    assert len(all_tasks) == 2
+    seen = []
+    store.subscribe(explode)
+    store.subscribe(seen.append)
 
-    done_tasks = store.list_tasks(status="done")
-    assert len(done_tasks) == 1
-    assert done_tasks[0]["id"] == "t1"
+    store.append("task-1", "claimed")
 
-    claimed_tasks = store.list_tasks(status="claimed")
-    assert len(claimed_tasks) == 1
-    assert claimed_tasks[0]["id"] == "t2"
+    assert len(store.events_for("task-1")) == 1
+    assert len(seen) == 1
+
+
+def test_subscribers_only_see_committed_facts(store):
+    """Notification happens after commit, so a listener can always read what it was told."""
+    read_back = []
+    store.subscribe(lambda event: read_back.append(store.events_for(event["task_id"])))
+
+    store.append("task-1", "claimed")
+
+    assert len(read_back[0]) == 1
+
+
+def test_payload_defaults_to_empty(store):
+    store.append("task-1", "claimed")
+    assert store.events_for("task-1")[0]["payload"] == {}
+
+
+def test_survives_reopen(tmp_path):
+    path = str(tmp_path / "test.db")
+    first = EventStore(path, agent="venus")
+    first.append("task-1", "claimed")
+    first.close()
+
+    second = EventStore(path, agent="venus")
+    assert len(second.events_for("task-1")) == 1
+    second.close()
+
+
+def test_log_events_emits_one_json_line(store, caplog):
+    from minion.store import log_events
+
+    with caplog.at_level("INFO", logger="minion.store"):
+        log_events({"task_id": "task-1", "type": "claimed", "payload": {}})
+
+    assert json.loads(caplog.records[-1].message)["task_id"] == "task-1"

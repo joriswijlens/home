@@ -8,11 +8,6 @@ agent:
     You help manage infrastructure, write code, and automate tasks.
     Be concise and practical.
 
-mqtt:
-  broker: mars.local
-  port: 1883
-  topic_prefix: minion
-
 api:
   host: "0.0.0.0"
   port: 8080
@@ -35,6 +30,10 @@ conversation:
 
 store:
   db_path: "/data/minion.db"
+
+tasks:
+  claim_stale_minutes: 30
+  max_attempts: 3
 
 github:
   repo: ""

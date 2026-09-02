@@ -8,3 +8,7 @@ services/docker-compose.override.yml
 services/backups/
 volumes/
 backups/
+apps/minion/config/local.yml
+apps/minion/*.db
+apps/minion/*.db-wal
+apps/minion/*.db-shm

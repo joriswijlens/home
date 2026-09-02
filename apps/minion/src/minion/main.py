@@ -4,13 +4,11 @@ import logging
 import uvicorn
 
 from minion.api import create_app
-from minion.claiming import TaskClaimer
 from minion.config import load_config
 from minion.events import EventDispatcher
 from minion.github import register_github
 from minion.handlers.chat import ChatHandler
-from minion.sources.mqtt import MqttEventSource
-from minion.store import TaskStore
+from minion.store import EventStore, log_events
 from minion.tools import create_registry
 
 logging.basicConfig(
@@ -24,13 +22,9 @@ async def run() -> None:
     config = load_config()
     logger.info("Starting Minion agent: %s", config.agent.name)
 
-    store = TaskStore(config.store.db_path)
-    claimer = TaskClaimer(
-        broker=config.mqtt.broker,
-        port=config.mqtt.port,
-        topic_prefix=config.mqtt.topic_prefix,
-        agent_name=config.agent.name,
-    )
+    store = EventStore(config.store.db_path, config.agent.name)
+    # One JSON line per fact on stdout; the Docker Loki driver ships it to Jupiter.
+    store.subscribe(log_events)
 
     tool_registry = create_registry(config.tools)
     dispatcher = EventDispatcher()
@@ -40,11 +34,7 @@ async def run() -> None:
 
     app = create_app(dispatcher)
 
-    mqtt_source: MqttEventSource | None = None
-    if config.mqtt.broker:
-        mqtt_source = MqttEventSource(config.mqtt, config.agent.name, claimer)
-
-    github_source = register_github(config, dispatcher, tool_registry, store, claimer)
+    github_source = register_github(config, dispatcher, tool_registry, store)
 
     server = uvicorn.Server(
         uvicorn.Config(
@@ -56,12 +46,6 @@ async def run() -> None:
     )
 
     tasks = [server.serve()]
-    if mqtt_source:
-        tasks.append(mqtt_source.start(dispatcher))
-        logger.info("MQTT source started")
-    else:
-        logger.info("MQTT disabled (no broker configured)")
-
     if github_source:
         tasks.append(github_source.start(dispatcher))
         logger.info("GitHub source started")
@@ -72,6 +56,6 @@ async def run() -> None:
         await asyncio.gather(*tasks)
     finally:
         store.close()
-        logger.info("Task store closed")
+        logger.info("Event store closed")
 
     logger.info("Minion agent stopped")

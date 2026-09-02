@@ -1,15 +1,14 @@
 import asyncio
 import logging
+from datetime import timedelta
 import re
-from typing import Any
 
-import anthropic
-
-from minion.claiming import TaskClaimer
+from minion.agent import AgentRunner
 from minion.config import Settings
 from minion.conversation import Conversation
 from minion.events import Event, EventHandler
-from minion.store import TaskStore
+from minion.state import CLAIMED, COMPLETED, FAILED, is_claimed
+from minion.store import EventStore
 from minion.tools import ToolRegistry
 
 logger = logging.getLogger(__name__)
@@ -62,18 +61,13 @@ class PlanHandler(EventHandler):
         self,
         config: Settings,
         tool_registry: ToolRegistry,
-        store: TaskStore,
-        claimer: TaskClaimer,
+        store: EventStore,
     ) -> None:
-        self._client = anthropic.AsyncAnthropic(api_key=config.anthropic_api_key)
-        self._model = config.agent.model
-        self._max_tokens = config.agent.max_tokens
-        self._effort = config.agent.effort
-        self._tools = tool_registry
+        self._runner = AgentRunner(config, tool_registry)
         self._github = config.github
         self._config = config
         self._store = store
-        self._claimer = claimer
+        self._tasks = config.tasks
         self._agent_name = config.agent.name
 
     async def handle(self, event: Event) -> str | None:
@@ -85,18 +79,14 @@ class PlanHandler(EventHandler):
 
         logger.info("Planning issue #%d: %s", number, title)
 
-        claimed = self._store.create_task(
-            task_id=task_id,
-            source="github",
-            external_ref=str(number),
-            agent=self._agent_name,
-            title=title,
-        )
-        if not claimed:
+        events = self._store.events_for(task_id)
+        if is_claimed(
+            events, stale_after=timedelta(minutes=self._tasks.claim_stale_minutes)
+        ):
             logger.info("Task %s already claimed — skipping", task_id)
             return None
 
-        await self._claimer.try_claim(task_id)
+        self._store.append(task_id, CLAIMED, {"issue": number, "title": title})
 
         await self._update_labels(
             number,
@@ -111,7 +101,7 @@ class PlanHandler(EventHandler):
                 f"Explore the codebase and create a detailed implementation plan."
             )
 
-            plan = await self._run_agent(conversation)
+            plan = await self._runner.run(SYSTEM_PROMPT, conversation, MAX_TOOL_ROUNDS, "plan")
 
             branch = f"issue-{number}-{_slugify(title)}"
             await self._create_branch(branch)
@@ -130,59 +120,14 @@ class PlanHandler(EventHandler):
 
             await self._checkout_master()
 
-            self._store.update_status(task_id, "done")
+            self._store.append(task_id, COMPLETED, {"issue": number})
             logger.info("Plan posted for issue #%d", number)
             return plan
 
         except Exception:
             logger.exception("Planning failed for issue #%d", number)
-            self._store.update_status(task_id, "failed")
+            self._store.append(task_id, FAILED, {"issue": number})
             raise
-
-    async def _run_agent(self, conversation: Conversation) -> str:
-        tools = self._tools.list_tools()
-
-        for _ in range(MAX_TOOL_ROUNDS):
-            response = await self._client.messages.create(
-                model=self._model,
-                max_tokens=self._max_tokens,
-                system=SYSTEM_PROMPT,
-                messages=conversation.messages,
-                tools=tools or anthropic.NOT_GIVEN,
-                output_config={"effort": self._effort},
-            )
-
-            conversation.add_assistant(response.content)
-
-            if response.stop_reason == "end_turn":
-                return self._extract_text(response.content)
-
-            if response.stop_reason == "tool_use":
-                await self._handle_tool_use(response.content, conversation)
-                continue
-
-            return self._extract_text(response.content)
-
-        return "Plan generation reached maximum tool rounds."
-
-    async def _handle_tool_use(
-        self, content: list[Any], conversation: Conversation
-    ) -> None:
-        results: list[tuple[str, str]] = []
-        for block in content:
-            if block.type == "tool_use":
-                logger.info("Plan tool call: %s(%s)", block.name, block.input)
-                result = await self._tools.execute(block.name, **block.input)
-                results.append((block.id, result))
-        if results:
-            conversation.add_tool_results(results)
-
-    def _extract_text(self, content: list[Any]) -> str:
-        parts = []
-        for block in content:
-            if block.type == "text":
-                parts.append(block.text)
-        return "\n".join(parts) or "(no response)"
 
     async def _create_branch(self, branch: str) -> None:
         repo_path = self._get_repo_path()
