@@ -8,3 +8,4 @@
 | GitHub Workflow | [github-workflow.md](github-workflow.md) | Label-driven issue lifecycle (plan → planned → implement → done) |
 | Event Flow | [event-flow.md](event-flow.md) | Sequence diagram of the agent loop (API calls, tool use, conversation) |
 | Package Structure | [package-structure.md](package-structure.md) | Module dependency graph |
+| Security | [security.md](security.md) | What is protected, what is not, and the order to close the gaps |
