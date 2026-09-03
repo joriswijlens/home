@@ -37,22 +37,55 @@ async def main() -> int:
         marker.write_text("the-secret-is-artichoke\n")
 
         config.tools.allowed_paths = [tmp]
+
+        # Deliberately the cheapest run that still proves the path works: lowest
+        # effort, and a small ceiling so a rambling answer cannot cost real money.
+        config.agent.effort = "low"
+        config.agent.max_tokens = 2000
+
         agent = create_agent(config, create_registry(config.tools))
 
-        print(f"model={config.agent.model} effort={config.agent.effort}")
+        print(f"model={config.agent.model} effort={config.agent.effort} "
+              f"max_tokens={config.agent.max_tokens}")
         print(f"backend={config.agent.backend}\n")
 
-        answer = await agent.run(
+        run = await agent.run(
             "You are a test harness. Use the tools you have; answer in one short line.",
             f"Read the file {marker} and tell me exactly what secret it contains.",
             max_rounds=5,
             label="smoke",
         )
 
-    print(f"\n--- answer ---\n{answer}\n")
+    print(f"\n--- answer ---\n{run.text}\n")
 
-    if "artichoke" in answer.lower():
-        print("PASS — the model called the tool and read the file.")
+    # Sonnet 5: $2 / $10 per MTok; cache reads 0.1x, writes 1.25x.
+    cost = (
+        run.input_tokens * 2.0
+        + run.output_tokens * 10.0
+        + run.cache_read_tokens * 0.20
+        + run.cache_write_tokens * 2.50
+    ) / 1_000_000
+    print(
+        f"tokens: in={run.input_tokens} out={run.output_tokens} "
+        f"cache_read={run.cache_read_tokens} cache_write={run.cache_write_tokens}"
+        f"  ≈ ${cost:.4f}"
+    )
+    if run.cache_read_tokens:
+        saved = run.cache_read_tokens * (2.0 - 0.20) / 1_000_000
+        print(f"caching works — read {run.cache_read_tokens} tokens, saved ${saved:.4f}")
+    elif run.cache_write_tokens:
+        print(
+            "cache written but not read back — expected on a single round; a longer "
+            "run should show reads."
+        )
+    else:
+        print(
+            "NO CACHING — prefix likely below the model's minimum cacheable size, "
+            "or something upstream of the breakpoint changes per request."
+        )
+
+    if "artichoke" in run.text.lower():
+        print("PASS — the model called the tool, read the file, and usage was recorded.")
         return 0
 
     print("FAIL — the model answered without the file's contents.")

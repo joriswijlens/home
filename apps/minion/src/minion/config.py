@@ -35,6 +35,8 @@ class AgentConfig(BaseModel):
     model: str = "claude-sonnet-5"
     max_tokens: int = 16000
     effort: str = "medium"
+    # Off only for diagnosing a cache problem; on, it is the largest cost lever there is.
+    cache_prompts: bool = True
     system_prompt: str = (
         "You are a helpful home automation assistant called {name}. "
         "You help manage infrastructure, write code, and automate tasks. "
