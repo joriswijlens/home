@@ -7,6 +7,7 @@ task that failed twice) can be tested with literal dicts and no database.
 
 from datetime import datetime, timedelta, timezone
 
+LABELED = "labeled"
 CLAIMED = "claimed"
 COMPLETED = "completed"
 FAILED = "failed"
@@ -61,6 +62,23 @@ def last_attempt_failed(events: list[dict]) -> bool:
     for event in reversed(events):
         if event["type"] in TERMINAL:
             return event["type"] == FAILED
+    return False
+
+
+def is_labeled(events: list[dict]) -> bool:
+    """Already observed as ready for pickup, and nothing terminal happened since.
+
+    A pure dedup check for the poller — it stops the same observation being logged on
+    every poll cycle while a task sits untouched. It carries no opinion on whether the
+    task should actually be picked up: that is should_pick_up's job, computed
+    separately by the worker from the same log. After a terminal event the gate
+    reopens, which is what lets a retry-eligible task be observed as labeled again.
+    """
+    for event in reversed(events):
+        if event["type"] == LABELED:
+            return True
+        if event["type"] in TERMINAL:
+            return False
     return False
 
 

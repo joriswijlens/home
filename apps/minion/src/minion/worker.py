@@ -6,6 +6,19 @@ and every step is written to the log as it happens.
 
 It is also where the bounds live, because unattended runs fail expensively rather than
 loudly: one run at a time, a hard timeout, and a spend ceiling checked before starting.
+
+## Trigger
+
+A provider only ever observes and records — `GitHubProvider.poll` appends `labeled`
+once, and stops. The worker is a subscriber to the event store, not to the provider: it
+reacts to `labeled` and independently folds the log through `should_pick_up` to decide
+whether this is actually worth running (budget, staleness, attempts already used).
+That split matters for retries — `labeled` fires once per observation, but a task can
+be legitimately re-run after a failure, and that decision belongs to the worker's state,
+never to how many times an event happened to fire.
+
+`EventStore.subscribe` fans out to every subscriber, so the same `labeled` fact already
+reaches both this worker and the Loki logger without either knowing about the other.
 """
 
 import asyncio
@@ -14,10 +27,9 @@ from datetime import datetime, timedelta, timezone
 
 from minion.agents import Agent
 from minion.config import TasksConfig
-from minion.events import Event, EventHandler
 from minion.flows import Flow
 from minion.providers import Task, TaskProvider
-from minion.state import CLAIMED, COMPLETED, FAILED, tokens_used
+from minion.state import CLAIMED, COMPLETED, FAILED, LABELED, should_pick_up, tokens_used
 from minion.store import EventStore
 
 logger = logging.getLogger(__name__)
@@ -26,9 +38,7 @@ BUDGET_EXCEEDED = "budget_exceeded"
 TIMED_OUT = "timed_out"
 
 
-class Worker(EventHandler):
-    event_types = ["task"]
-
+class Worker:
     def __init__(
         self,
         agent: Agent,
@@ -44,19 +54,49 @@ class Worker(EventHandler):
         self._tasks = tasks or TasksConfig()
         # Runs are the memory-hungry part. Everything else queues behind this.
         self._slots = asyncio.Semaphore(self._tasks.max_concurrent_runs)
+        # Held so a background run cannot be garbage-collected mid-flight.
+        self._background: set[asyncio.Task] = set()
 
-    async def handle(self, event: Event) -> str | None:
-        task: Task = event.payload["task"]
-        provider = self._providers[event.source]
-        flow = self._flows[task.flow]
+    def on_labeled(self, event: dict) -> None:
+        """The event store subscriber. Synchronous — schedules the run and returns.
+
+        Notification fires inline with `append()`, so this must never block: a run
+        takes minutes, and `append` (holding nothing by the time subscribers run, but
+        still on the caller's stack) must return immediately regardless.
+        """
+        if event["type"] != LABELED:
+            return
+
+        payload = event["payload"]
+        task = Task(
+            id=event["task_id"],
+            flow=payload["flow"],
+            ref=payload["ref"],
+            title=payload.get("title", ""),
+        )
+        provider_name = payload["provider"]
+
+        job = asyncio.create_task(self.process(provider_name, task))
+        self._background.add(job)
+        job.add_done_callback(self._background.discard)
+
+    async def process(self, provider_name: str, task: Task) -> str | None:
+        """Decide whether to act on an observation, then claim, run, report, record."""
+        provider = self._providers[provider_name]
+
+        events = self._store.events_for(task.id)
+        if not should_pick_up(
+            events,
+            max_attempts=self._tasks.max_attempts,
+            stale_after=timedelta(minutes=self._tasks.claim_stale_minutes),
+        ):
+            return None
 
         if self._over_budget():
             self._store.append(
                 task.id, BUDGET_EXCEEDED, {"ref": task.ref, "flow": task.flow}
             )
-            logger.warning(
-                "Daily token budget reached — not starting %s", task.id
-            )
+            logger.warning("Daily token budget reached — not starting %s", task.id)
             return None
 
         # The provider's claim is what stops a second worker, since the event log is
@@ -66,6 +106,7 @@ class Worker(EventHandler):
 
         self._store.append(task.id, CLAIMED, {"ref": task.ref, "flow": task.flow})
 
+        flow = self._flows[task.flow]
         async with self._slots:
             return await self._run(task, provider, flow)
 
@@ -115,8 +156,8 @@ class Worker(EventHandler):
         except Exception as exc:
             logger.exception("%s failed for %s", task.flow, task.id)
             self._store.append(task.id, FAILED, {"ref": task.ref, "error": str(exc)})
-            # Hand it back so a retry is possible — bounded by max_attempts, which the
-            # provider checks before dispatching again.
+            # Hand it back so a retry is possible — bounded by max_attempts, checked
+            # by should_pick_up the next time this task is observed as labeled.
             await provider.release(task)
             raise
 

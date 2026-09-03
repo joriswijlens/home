@@ -5,6 +5,7 @@ from minion.state import (
     claim_state,
     is_claimed,
     is_completed,
+    is_labeled,
     last_attempt_failed,
     should_pick_up,
 )
@@ -99,3 +100,23 @@ def test_retries_are_bounded():
 
     assert not should_pick_up(events, max_attempts=3, now=NOW)
     assert should_pick_up(events, max_attempts=4, now=NOW)
+
+
+def test_not_labeled_with_no_events():
+    assert not is_labeled([])
+
+
+def test_labeled_once_stays_labeled():
+    assert is_labeled([event("labeled", 5)])
+
+
+def test_labeled_gate_closes_on_completion():
+    """The poller must not observe it again while nothing has ended."""
+    events = [event("labeled", 10), event("claimed", 8), event("completed", 2)]
+    assert not is_labeled(events)
+
+
+def test_labeled_gate_reopens_after_failure():
+    """A retry-eligible task must be observable as labeled again."""
+    events = [event("labeled", 30), event("claimed", 28), event("failed", 20)]
+    assert not is_labeled(events)

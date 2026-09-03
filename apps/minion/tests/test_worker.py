@@ -1,14 +1,14 @@
+import asyncio
+
 import pytest
 
 from minion.agents import RunResult
 from minion.config import TasksConfig
-from minion.events import Event
 from minion.flows import Flow
 from minion.providers import Task, TaskProvider
-from minion.state import CLAIMED, COMPLETED, FAILED
+from minion.state import CLAIMED, COMPLETED, FAILED, LABELED
 from minion.store import EventStore
 from minion.worker import Worker
-
 
 _DEFAULT_CONTEXT = {"ref": "7", "title": "t"}
 
@@ -52,8 +52,6 @@ class FakeAgent:
         if self.explode:
             raise RuntimeError("model unavailable")
         if self.hangs:
-            import asyncio
-
             await asyncio.sleep(3600)
         self.calls.append(prompt)
         return RunResult(text=self.result, output_tokens=self.tokens)
@@ -84,11 +82,13 @@ def types(store, task_id="task-1"):
     return [e["type"] for e in store.events_for(task_id)]
 
 
+# -- process(): claim, run, report, record ------------------------------------
+
+
 async def test_happy_path_records_claim_and_completion(store):
     provider, agent = FakeProvider(), FakeAgent(result="the plan")
-    event = Event(type="task", source="fake", payload={"task": TASK})
 
-    result = await worker(store, provider, agent).handle(event)
+    result = await worker(store, provider, agent).process("fake", TASK)
 
     assert result == "the plan"
     assert types(store) == [CLAIMED, COMPLETED]
@@ -98,9 +98,8 @@ async def test_happy_path_records_claim_and_completion(store):
 async def test_losing_the_claim_does_nothing_at_all(store):
     """A worker that lost the race must not run, report, or record anything."""
     provider, agent = FakeProvider(claim_succeeds=False), FakeAgent()
-    event = Event(type="task", source="fake", payload={"task": TASK})
 
-    assert await worker(store, provider, agent).handle(event) is None
+    assert await worker(store, provider, agent).process("fake", TASK) is None
     assert types(store) == []
     assert agent.calls == []
     assert provider.reported == []
@@ -108,19 +107,17 @@ async def test_losing_the_claim_does_nothing_at_all(store):
 
 async def test_unworkable_context_is_recorded_as_failed(store):
     provider, agent = FakeProvider(context=None), FakeAgent()
-    event = Event(type="task", source="fake", payload={"task": TASK})
 
-    assert await worker(store, provider, agent).handle(event) is None
+    assert await worker(store, provider, agent).process("fake", TASK) is None
     assert types(store) == [CLAIMED, FAILED]
     assert agent.calls == []
 
 
 async def test_failure_records_and_hands_the_task_back(store):
     provider, agent = FakeProvider(), FakeAgent(explode=True)
-    event = Event(type="task", source="fake", payload={"task": TASK})
 
     with pytest.raises(RuntimeError):
-        await worker(store, provider, agent).handle(event)
+        await worker(store, provider, agent).process("fake", TASK)
 
     assert types(store) == [CLAIMED, FAILED]
     assert provider.released == ["task-1"]
@@ -129,19 +126,17 @@ async def test_failure_records_and_hands_the_task_back(store):
 
 async def test_the_flow_receives_the_provider_context(store):
     provider, agent = FakeProvider(context={"ref": "42", "title": "x"}), FakeAgent()
-    event = Event(type="task", source="fake", payload={"task": TASK})
 
-    await worker(store, provider, agent).handle(event)
+    await worker(store, provider, agent).process("fake", TASK)
 
     assert agent.calls == ["work on 42"]
 
 
 async def test_failure_details_are_kept(store):
     provider, agent = FakeProvider(), FakeAgent(explode=True)
-    event = Event(type="task", source="fake", payload={"task": TASK})
 
     with pytest.raises(RuntimeError):
-        await worker(store, provider, agent).handle(event)
+        await worker(store, provider, agent).process("fake", TASK)
 
     failed = store.events_for("task-1")[-1]
     assert "model unavailable" in failed["payload"]["error"]
@@ -151,9 +146,8 @@ async def test_a_wedged_run_is_stopped_and_handed_back(store):
     """A hung agent otherwise holds its claim and burns tokens until staleness expires."""
     provider, agent = FakeProvider(), FakeAgent(hangs=True)
     tasks = TasksConfig(run_timeout_minutes=0)  # 0 -> immediate timeout
-    event = Event(type="task", source="fake", payload={"task": TASK})
 
-    result = await worker(store, provider, agent, tasks).handle(event)
+    result = await worker(store, provider, agent, tasks).process("fake", TASK)
 
     assert result is None
     assert types(store) == [CLAIMED, "timed_out"]
@@ -163,9 +157,8 @@ async def test_a_wedged_run_is_stopped_and_handed_back(store):
 
 async def test_usage_is_recorded_on_completion(store):
     provider, agent = FakeProvider(), FakeAgent(tokens=1234)
-    event = Event(type="task", source="fake", payload={"task": TASK})
 
-    await worker(store, provider, agent).handle(event)
+    await worker(store, provider, agent).process("fake", TASK)
 
     completed = store.events_for("task-1")[-1]
     assert completed["payload"]["usage"]["output_tokens"] == 1234
@@ -177,9 +170,8 @@ async def test_the_daily_budget_stops_a_run_before_it_starts(store):
 
     provider, agent = FakeProvider(), FakeAgent()
     tasks = TasksConfig(daily_token_budget=500)
-    event = Event(type="task", source="fake", payload={"task": TASK})
 
-    assert await worker(store, provider, agent, tasks).handle(event) is None
+    assert await worker(store, provider, agent, tasks).process("fake", TASK) is None
     assert types(store) == ["budget_exceeded"]
     assert agent.calls == []
     assert provider.reported == []
@@ -189,15 +181,12 @@ async def test_budget_of_zero_means_no_limit(store):
     store.append("earlier-task", COMPLETED, {"usage": {"output_tokens": 10_000_000}})
 
     provider, agent = FakeProvider(), FakeAgent()
-    event = Event(type="task", source="fake", payload={"task": TASK})
 
-    assert await worker(store, provider, agent).handle(event) == "done"
+    assert await worker(store, provider, agent).process("fake", TASK) == "done"
 
 
 async def test_runs_do_not_overlap(store):
     """One run at a time on a 1GB Pi; the rest queue rather than pile up."""
-    import asyncio
-
     running = 0
     peak = 0
 
@@ -214,11 +203,78 @@ async def test_runs_do_not_overlap(store):
     w = worker(store, provider, CountingAgent(), TasksConfig(max_concurrent_runs=1))
 
     await asyncio.gather(*[
-        w.handle(Event(type="task", source="fake", payload={"task": TASK}))
-        for _ in range(4)
+        w.process("fake", Task(id=f"task-{i}", flow="demo", ref=str(i), title="t"))
+        for i in range(4)
     ])
 
     assert peak == 1
+
+
+async def test_a_task_that_should_not_be_picked_up_is_left_alone(store):
+    """Retry eligibility (attempts, staleness) is folded here, not decided elsewhere."""
+    for _ in range(3):
+        store.append("task-1", CLAIMED, {"ref": "7", "flow": "demo"})
+        store.append("task-1", FAILED, {"ref": "7"})
+
+    provider, agent = FakeProvider(), FakeAgent()
+
+    assert await worker(store, provider, agent).process("fake", TASK) is None
+    assert agent.calls == []
+    assert provider.reported == []
+
+
+# -- on_labeled(): the store subscriber ----------------------------------------
+
+
+def labeled_event(task_id="task-1", flow="demo", ref="7", title="t", provider="fake"):
+    return {
+        "task_id": task_id,
+        "agent": "venus",
+        "type": LABELED,
+        "payload": {"provider": provider, "flow": flow, "ref": ref, "title": title},
+        "timestamp": "2026-09-03T00:00:00+00:00",
+    }
+
+
+async def test_on_labeled_schedules_a_run(store):
+    provider, agent = FakeProvider(), FakeAgent(result="scheduled")
+    w = worker(store, provider, agent)
+
+    w.on_labeled(labeled_event())
+    await asyncio.gather(*w._background)
+
+    assert types(store) == [CLAIMED, COMPLETED]
+
+
+async def test_on_labeled_ignores_other_event_types(store):
+    provider, agent = FakeProvider(), FakeAgent()
+    w = worker(store, provider, agent)
+
+    event = labeled_event()
+    event["type"] = COMPLETED
+    w.on_labeled(event)
+
+    assert w._background == set()
+    assert agent.calls == []
+
+
+async def test_on_labeled_does_not_block_the_caller(store):
+    """It is called synchronously from inside append() — it must return immediately."""
+    import time
+
+    provider, agent = FakeProvider(), FakeAgent(hangs=True)
+    w = worker(store, provider, agent)
+
+    start = time.monotonic()
+    w.on_labeled(labeled_event())
+    elapsed = time.monotonic() - start
+
+    assert elapsed < 0.1
+    for job in w._background:
+        job.cancel()
+
+
+# -- reclaim_stale --------------------------------------------------------------
 
 
 async def test_stale_claims_are_handed_back(store):
@@ -230,7 +286,7 @@ async def test_stale_claims_are_handed_back(store):
     with store._lock:
         store._conn.execute(
             "INSERT INTO events (task_id, agent, type, payload, timestamp) "
-            'VALUES (?, ?, ?, ?, ?)',
+            "VALUES (?, ?, ?, ?, ?)",
             ("fake-demo-7", "venus", CLAIMED, '{"ref": "7", "flow": "demo"}', old),
         )
         store._conn.commit()

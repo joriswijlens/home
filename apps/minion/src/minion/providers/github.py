@@ -8,13 +8,11 @@ recorded in the event log, not in the labels.
 import json
 import logging
 import re
-from datetime import timedelta
-
 from minion.config import Settings
-from minion.events import Event, EventDispatcher
+from minion.events import EventDispatcher
 from minion.providers import PollingProvider, Task
 from minion.providers.process import git, run, try_run
-from minion.state import should_pick_up
+from minion.state import LABELED, is_labeled
 from minion.store import EventStore
 
 logger = logging.getLogger(__name__)
@@ -39,7 +37,6 @@ class GitHubProvider(PollingProvider):
     def __init__(self, config: Settings, store: EventStore) -> None:
         super().__init__()
         self._config = config.github
-        self._tasks = config.tasks
         self._repo_path = (
             config.tools.git_repos[0] if config.tools.git_repos else "/opt/smartworkx"
         )
@@ -49,6 +46,12 @@ class GitHubProvider(PollingProvider):
     # -- EventSource (polled: GitHub cannot reach in to push) ------------------
 
     async def poll(self, dispatcher: EventDispatcher) -> None:
+        """Observe which issues are ready for pickup — nothing more.
+
+        Retry eligibility, budget and staleness are the worker's job, evaluated when
+        it reacts to `labeled`. The poller only records that the label was seen, once,
+        so the log does not fill with the same observation every cycle.
+        """
         for flow, (ready_label, _, _) in FLOWS.items():
             for issue in await self._list_issues(self._config.labels[ready_label]):
                 task = Task(
@@ -59,17 +62,19 @@ class GitHubProvider(PollingProvider):
                     payload=issue,
                 )
 
-                events = self._store.events_for(task.id)
-                if not should_pick_up(
-                    events,
-                    max_attempts=self._tasks.max_attempts,
-                    stale_after=timedelta(minutes=self._tasks.claim_stale_minutes),
-                ):
+                if is_labeled(self._store.events_for(task.id)):
                     continue
 
-                logger.info("Issue #%s (%s) — %s", task.ref, task.title, flow)
-                await dispatcher.dispatch(
-                    Event(type="task", source=self.name, payload={"task": task})
+                logger.info("Issue #%s (%s) labeled for %s", task.ref, task.title, flow)
+                self._store.append(
+                    task.id,
+                    LABELED,
+                    {
+                        "provider": self.name,
+                        "flow": task.flow,
+                        "ref": task.ref,
+                        "title": task.title,
+                    },
                 )
 
     # -- TaskProvider ---------------------------------------------------------

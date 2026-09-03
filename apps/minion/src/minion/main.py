@@ -51,15 +51,16 @@ async def run() -> None:
         logger.info("GitHub disabled (no repo configured)")
 
     if providers:
-        dispatcher.register(
-            Worker(
-                create_agent(config, tool_registry),
-                store,
-                providers,
-                flow_registry(),
-                config.tasks,
-            )
+        worker = Worker(
+            create_agent(config, tool_registry),
+            store,
+            providers,
+            flow_registry(),
+            config.tasks,
         )
+        # A provider only observes and appends `labeled`; the worker reacts to that
+        # fact, alongside the Loki logger — both are plain subscribers to the same log.
+        store.subscribe(worker.on_labeled)
 
     server = uvicorn.Server(
         uvicorn.Config(
