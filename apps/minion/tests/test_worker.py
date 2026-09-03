@@ -223,7 +223,7 @@ async def test_a_task_that_should_not_be_picked_up_is_left_alone(store):
     assert provider.reported == []
 
 
-# -- on_labeled(): the store subscriber ----------------------------------------
+# -- on_event(): the store subscriber ----------------------------------------
 
 
 def labeled_event(task_id="task-1", flow="demo", ref="7", title="t", provider="fake"):
@@ -236,29 +236,29 @@ def labeled_event(task_id="task-1", flow="demo", ref="7", title="t", provider="f
     }
 
 
-async def test_on_labeled_schedules_a_run(store):
+async def test_on_event_schedules_a_run_for_labeled(store):
     provider, agent = FakeProvider(), FakeAgent(result="scheduled")
     w = worker(store, provider, agent)
 
-    w.on_labeled(labeled_event())
+    w.on_event(labeled_event())
     await asyncio.gather(*w._background)
 
     assert types(store) == [CLAIMED, COMPLETED]
 
 
-async def test_on_labeled_ignores_other_event_types(store):
+async def test_on_event_ignores_non_labeled_facts(store):
     provider, agent = FakeProvider(), FakeAgent()
     w = worker(store, provider, agent)
 
     event = labeled_event()
     event["type"] = COMPLETED
-    w.on_labeled(event)
+    w.on_event(event)
 
     assert w._background == set()
     assert agent.calls == []
 
 
-async def test_on_labeled_does_not_block_the_caller(store):
+async def test_on_event_does_not_block_the_caller(store):
     """It is called synchronously from inside append() — it must return immediately."""
     import time
 
@@ -266,7 +266,7 @@ async def test_on_labeled_does_not_block_the_caller(store):
     w = worker(store, provider, agent)
 
     start = time.monotonic()
-    w.on_labeled(labeled_event())
+    w.on_event(labeled_event())
     elapsed = time.monotonic() - start
 
     assert elapsed < 0.1

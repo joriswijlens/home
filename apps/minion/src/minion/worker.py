@@ -10,15 +10,16 @@ loudly: one run at a time, a hard timeout, and a spend ceiling checked before st
 ## Trigger
 
 A provider only ever observes and records — `GitHubProvider.poll` appends `labeled`
-once, and stops. The worker is a subscriber to the event store, not to the provider: it
-reacts to `labeled` and independently folds the log through `should_pick_up` to decide
-whether this is actually worth running (budget, staleness, attempts already used).
-That split matters for retries — `labeled` fires once per observation, but a task can
-be legitimately re-run after a failure, and that decision belongs to the worker's state,
-never to how many times an event happened to fire.
+once, and stops. The worker is a subscriber to the event store, not to the provider,
+and — like every subscriber — receives every fact the store ever appends: claims,
+failures, budget hits, whatever a future flow adds. `on_event` picks out `labeled` and
+ignores the rest, exactly as `log_events` receives the same stream and logs all of it.
 
-`EventStore.subscribe` fans out to every subscriber, so the same `labeled` fact already
-reaches both this worker and the Loki logger without either knowing about the other.
+Once picked out, the worker independently folds the log through `should_pick_up` to
+decide whether this is actually worth running (budget, staleness, attempts already
+used). That split matters for retries — `labeled` fires once per observation, but a
+task can be legitimately re-run after a failure, and that decision belongs to the
+worker's state, never to how many times an event happened to fire.
 """
 
 import asyncio
@@ -57,12 +58,15 @@ class Worker:
         # Held so a background run cannot be garbage-collected mid-flight.
         self._background: set[asyncio.Task] = set()
 
-    def on_labeled(self, event: dict) -> None:
-        """The event store subscriber. Synchronous — schedules the run and returns.
+    def on_event(self, event: dict) -> None:
+        """The event store subscriber. Receives every fact, not just `labeled` — the
+        log carries claims, failures, budget hits, and whatever future flows append,
+        so filtering is this method's job, same as `log_events` receives everything
+        and simply logs it all.
 
-        Notification fires inline with `append()`, so this must never block: a run
-        takes minutes, and `append` (holding nothing by the time subscribers run, but
-        still on the caller's stack) must return immediately regardless.
+        Synchronous, and must never block: it fires inline with `append()`, on the
+        caller's stack, so a run (minutes) held here would stall every other append —
+        including the one after it and Loki's logger.
         """
         if event["type"] != LABELED:
             return

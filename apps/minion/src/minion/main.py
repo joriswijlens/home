@@ -60,7 +60,7 @@ async def run() -> None:
         )
         # A provider only observes and appends `labeled`; the worker reacts to that
         # fact, alongside the Loki logger — both are plain subscribers to the same log.
-        store.subscribe(worker.on_labeled)
+        store.subscribe(worker.on_event)
 
     server = uvicorn.Server(
         uvicorn.Config(
