@@ -31,6 +31,19 @@ github:
 #       options: { baseURL: "http://localhost:11434/v1" }
 #       models: { "qwen2.5:14b": { name: "Qwen 2.5 14B" } }
 
+# An agent being trained: runs here, on your laptop, against its feature branch.
+# Needs gh auth, mcp-grafana, GRAFANA_URL and GRAFANA_SERVICE_ACCOUNT_TOKEN.
+# agents:
+#   handles:
+#     depot_error_detected:
+#       repo: joriswijlens/depot
+#       ref: feature/169-depot-error-fixer
+#       agent: depot_error_fixer
+#       ceiling:
+#         max_rounds: 40
+#         daily_token_budget: 3000000
+#         mcp: [grafana]
+
 # Extra tools for the model — OpenCode's own `mcp` and `skills` blocks, unchanged.
 # opencode:
 #   mcp:
