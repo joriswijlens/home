@@ -48,7 +48,7 @@ class FakeAgent:
         self.hangs = hangs
         self.calls = []
 
-    async def run(self, system_prompt, prompt, max_rounds, label="agent"):
+    async def run(self, system_prompt, prompt, max_rounds, label="agent", workdir=None):
         if self.explode:
             raise RuntimeError("model unavailable")
         if self.hangs:
@@ -68,18 +68,18 @@ TASK = Task(id="task-1", flow="demo", ref="7", title="t")
 
 
 @pytest.fixture
-def store(tmp_path):
-    s = EventStore(str(tmp_path / "t.db"), agent="venus")
+async def store(nats_url, stream_name):
+    s = await EventStore.connect(nats_url, agent="venus", stream=stream_name)
     yield s
-    s.close()
+    await s.close()
 
 
 def worker(store, provider, agent, tasks=None):
     return Worker(agent, store, {"fake": provider}, {"demo": FLOW}, tasks)
 
 
-def types(store, task_id="task-1"):
-    return [e["type"] for e in store.events_for(task_id)]
+async def types(store, task_id="task-1"):
+    return [e["type"] for e in await store.events_for(task_id)]
 
 
 # -- process(): claim, run, report, record ------------------------------------
@@ -91,7 +91,7 @@ async def test_happy_path_records_claim_and_completion(store):
     result = await worker(store, provider, agent).process("fake", TASK)
 
     assert result == "the plan"
-    assert types(store) == [CLAIMED, COMPLETED]
+    assert await types(store) == [CLAIMED, COMPLETED]
     assert provider.reported == [(COMPLETED, {"result": "the plan"})]
 
 
@@ -100,7 +100,7 @@ async def test_losing_the_claim_does_nothing_at_all(store):
     provider, agent = FakeProvider(claim_succeeds=False), FakeAgent()
 
     assert await worker(store, provider, agent).process("fake", TASK) is None
-    assert types(store) == []
+    assert await types(store) == []
     assert agent.calls == []
     assert provider.reported == []
 
@@ -109,7 +109,7 @@ async def test_unworkable_context_is_recorded_as_failed(store):
     provider, agent = FakeProvider(context=None), FakeAgent()
 
     assert await worker(store, provider, agent).process("fake", TASK) is None
-    assert types(store) == [CLAIMED, FAILED]
+    assert await types(store) == [CLAIMED, FAILED]
     assert agent.calls == []
 
 
@@ -119,7 +119,7 @@ async def test_failure_records_and_hands_the_task_back(store):
     with pytest.raises(RuntimeError):
         await worker(store, provider, agent).process("fake", TASK)
 
-    assert types(store) == [CLAIMED, FAILED]
+    assert await types(store) == [CLAIMED, FAILED]
     assert provider.released == ["task-1"]
     assert provider.reported == []
 
@@ -138,7 +138,7 @@ async def test_failure_details_are_kept(store):
     with pytest.raises(RuntimeError):
         await worker(store, provider, agent).process("fake", TASK)
 
-    failed = store.events_for("task-1")[-1]
+    failed = (await store.events_for("task-1"))[-1]
     assert "model unavailable" in failed["payload"]["error"]
 
 
@@ -150,7 +150,7 @@ async def test_a_wedged_run_is_stopped_and_handed_back(store):
     result = await worker(store, provider, agent, tasks).process("fake", TASK)
 
     assert result is None
-    assert types(store) == [CLAIMED, "timed_out"]
+    assert await types(store) == [CLAIMED, "timed_out"]
     assert provider.released == ["task-1"]
     assert provider.reported == []
 
@@ -160,25 +160,25 @@ async def test_usage_is_recorded_on_completion(store):
 
     await worker(store, provider, agent).process("fake", TASK)
 
-    completed = store.events_for("task-1")[-1]
+    completed = (await store.events_for("task-1"))[-1]
     assert completed["payload"]["usage"]["output_tokens"] == 1234
 
 
 async def test_the_daily_budget_stops_a_run_before_it_starts(store):
     """The check must precede the claim — spending is what we are trying to avoid."""
-    store.append("earlier-task", COMPLETED, {"usage": {"output_tokens": 900}})
+    await store.append("earlier-task", COMPLETED, {"usage": {"output_tokens": 900}})
 
     provider, agent = FakeProvider(), FakeAgent()
     tasks = TasksConfig(daily_token_budget=500)
 
     assert await worker(store, provider, agent, tasks).process("fake", TASK) is None
-    assert types(store) == ["budget_exceeded"]
+    assert await types(store) == ["budget_exceeded"]
     assert agent.calls == []
     assert provider.reported == []
 
 
 async def test_budget_of_zero_means_no_limit(store):
-    store.append("earlier-task", COMPLETED, {"usage": {"output_tokens": 10_000_000}})
+    await store.append("earlier-task", COMPLETED, {"usage": {"output_tokens": 10_000_000}})
 
     provider, agent = FakeProvider(), FakeAgent()
 
@@ -213,8 +213,8 @@ async def test_runs_do_not_overlap(store):
 async def test_a_task_that_should_not_be_picked_up_is_left_alone(store):
     """Retry eligibility (attempts, staleness) is folded here, not decided elsewhere."""
     for _ in range(3):
-        store.append("task-1", CLAIMED, {"ref": "7", "flow": "demo"})
-        store.append("task-1", FAILED, {"ref": "7"})
+        await store.append("task-1", CLAIMED, {"ref": "7", "flow": "demo"})
+        await store.append("task-1", FAILED, {"ref": "7"})
 
     provider, agent = FakeProvider(), FakeAgent()
 
@@ -240,10 +240,10 @@ async def test_on_event_schedules_a_run_for_labeled(store):
     provider, agent = FakeProvider(), FakeAgent(result="scheduled")
     w = worker(store, provider, agent)
 
-    w.on_event(labeled_event())
+    w._on_event(labeled_event())
     await asyncio.gather(*w._background)
 
-    assert types(store) == [CLAIMED, COMPLETED]
+    assert await types(store) == [CLAIMED, COMPLETED]
 
 
 async def test_on_event_ignores_non_labeled_facts(store):
@@ -252,7 +252,7 @@ async def test_on_event_ignores_non_labeled_facts(store):
 
     event = labeled_event()
     event["type"] = COMPLETED
-    w.on_event(event)
+    w._on_event(event)
 
     assert w._background == set()
     assert agent.calls == []
@@ -266,7 +266,7 @@ async def test_on_event_does_not_block_the_caller(store):
     w = worker(store, provider, agent)
 
     start = time.monotonic()
-    w.on_event(labeled_event())
+    w._on_event(labeled_event())
     elapsed = time.monotonic() - start
 
     assert elapsed < 0.1
@@ -282,27 +282,31 @@ async def test_stale_claims_are_handed_back(store):
 
     from minion.worker import reclaim_stale
 
+    import json
+
+    # Published straight to the stream: `append` stamps now, and staleness is read
+    # from the event's own timestamp, not the broker's.
     old = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
-    with store._lock:
-        store._conn.execute(
-            "INSERT INTO events (task_id, agent, type, payload, timestamp) "
-            "VALUES (?, ?, ?, ?, ?)",
-            ("fake-demo-7", "venus", CLAIMED, '{"ref": "7", "flow": "demo"}', old),
-        )
-        store._conn.commit()
+    await store._js.publish(
+        store._subject(CLAIMED, "fake-demo-7"),
+        json.dumps({
+            "task_id": "fake-demo-7", "agent": "venus", "type": CLAIMED,
+            "payload": {"ref": "7", "flow": "demo"}, "timestamp": old,
+        }).encode(),
+    )
 
     provider = FakeProvider()
     count = await reclaim_stale(store, {"fake": provider}, TasksConfig())
 
     assert count == 1
     assert provider.released == ["fake-demo-7"]
-    assert types(store, "fake-demo-7") == [CLAIMED, "released"]
+    assert await types(store, "fake-demo-7") == [CLAIMED, "released"]
 
 
 async def test_a_fresh_claim_is_left_alone(store):
     from minion.worker import reclaim_stale
 
-    store.append("fake-demo-8", CLAIMED, {"ref": "8", "flow": "demo"})
+    await store.append("fake-demo-8", CLAIMED, {"ref": "8", "flow": "demo"})
     provider = FakeProvider()
 
     assert await reclaim_stale(store, {"fake": provider}, TasksConfig()) == 0

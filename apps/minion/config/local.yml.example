@@ -1,7 +1,7 @@
 # Copy to local.yml for a laptop run — gitignored, and loaded last so it wins.
 # Overrides the deployment's absolute paths; nothing else needs to change.
 store:
-  db_path: "./minion.db"
+  url: "nats://localhost:4222"   # docker run -p 4222:4222 nats:2-alpine -js
 
 tools:
   allowed_paths:
@@ -19,3 +19,24 @@ github:
 #   secrets:
 #     ha: "generate-with-openssl-rand-hex-32"
 #   allow_bearer: ["ha"]   # LAN senders that cannot sign; never for external ones
+
+# Model backend. SCALEWAY_API_KEY in the environment for the default opencode/scaleway
+# pair; to run against a local Ollama instead, point the provider at it:
+# agent:
+#   model: ollama/qwen2.5:14b
+# opencode:
+#   provider:
+#     ollama:
+#       npm: "@ai-sdk/openai-compatible"
+#       options: { baseURL: "http://localhost:11434/v1" }
+#       models: { "qwen2.5:14b": { name: "Qwen 2.5 14B" } }
+
+# Extra tools for the model — OpenCode's own `mcp` and `skills` blocks, unchanged.
+# opencode:
+#   mcp:
+#     grafana:                      # github.com/grafana/mcp-grafana, Apache-2.0
+#       type: local
+#       command: ["mcp-grafana"]
+#       environment: { GRAFANA_URL: "http://jupiter:3000", GRAFANA_API_KEY: "{env:GRAFANA_API_KEY}" }
+#   skills:
+#     paths: ["/opt/smartworkx/skills"]

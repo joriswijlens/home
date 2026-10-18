@@ -23,3 +23,6 @@
         recursive: true
         rsync_opts:
           - "--exclude=.gitignore"
+          # Laptop overrides carry personal keys; they must never reach the Pi.
+          - "--exclude=local.yml"
+          - "--exclude=*.example"

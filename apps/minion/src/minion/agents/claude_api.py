@@ -65,6 +65,7 @@ class ClaudeApiAgent:
         prompt: str,
         max_rounds: int,
         label: str = "agent",
+        workdir: str | None = None,
     ) -> RunResult:
         conversation = Conversation(max_history=200)
         conversation.add_user(prompt)

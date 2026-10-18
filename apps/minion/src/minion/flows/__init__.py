@@ -24,6 +24,7 @@ class Flow:
             self.build_prompt(context),
             self.max_rounds,
             self.name,
+            workdir=context.get("workdir"),
         )
         report = {
             "result": run.text,
@@ -35,5 +36,6 @@ class Flow:
 def registry() -> dict[str, Flow]:
     from minion.flows.implement import IMPLEMENT
     from minion.flows.plan import PLAN
+    from minion.flows.triage import TRIAGE
 
-    return {flow.name: flow for flow in (PLAN, IMPLEMENT)}
+    return {flow.name: flow for flow in (PLAN, IMPLEMENT, TRIAGE)}

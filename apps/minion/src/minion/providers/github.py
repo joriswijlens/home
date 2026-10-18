@@ -62,11 +62,11 @@ class GitHubProvider(PollingProvider):
                     payload=issue,
                 )
 
-                if is_labeled(self._store.events_for(task.id)):
+                if is_labeled(await self._store.events_for(task.id)):
                     continue
 
                 logger.info("Issue #%s (%s) labeled for %s", task.ref, task.title, flow)
-                self._store.append(
+                await self._store.append(
                     task.id,
                     LABELED,
                     {

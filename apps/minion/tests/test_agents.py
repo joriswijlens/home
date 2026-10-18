@@ -12,13 +12,22 @@ def deps():
     return config, create_registry(config.tools)
 
 
-def test_default_backend_is_the_claude_api_agent(deps):
+def test_default_backend_is_opencode(deps):
+    from minion.agents.opencode import OpenCodeAgent
+
     config, tools = deps
+    assert isinstance(create_agent(config, tools), OpenCodeAgent)
+
+
+def test_claude_api_is_still_a_backend(deps):
+    config, tools = deps
+    config.agent.backend = "claude_api"
     assert isinstance(create_agent(config, tools), ClaudeApiAgent)
 
 
 def test_claude_api_agent_satisfies_the_protocol(deps):
     config, tools = deps
+    config.agent.backend = "claude_api"
     assert isinstance(create_agent(config, tools), Agent)
 
 

@@ -1,4 +1,17 @@
 services:
+  # The event log. File-backed JetStream on the volume, so facts survive a container
+  # recreate and ride along in the volumes backup like everything else.
+  nats:
+    container_name: nats
+    image: nats:2-alpine
+    # Localhost only until remote workers connect — anyone who can append a fact
+    # can start a run, so NATS gets auth before it is opened up.
+    command: ["-js", "--store_dir", "/data", "--addr", "127.0.0.1"]
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ${VOLUMES_DIR:-/opt/smartworkx/volumes}/nats/data:/data
+
   minion:
     container_name: minion
     build:
@@ -6,10 +19,13 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     network_mode: host
+    depends_on:
+      - nats
     env_file:
       - .env
     environment:
       - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - SCALEWAY_API_KEY=${SCALEWAY_API_KEY}
     volumes:
       - ${VOLUMES_DIR:-/opt/smartworkx/volumes}/minion/config:/app/config
       - ${VOLUMES_DIR:-/opt/smartworkx/volumes}/minion/data:/data

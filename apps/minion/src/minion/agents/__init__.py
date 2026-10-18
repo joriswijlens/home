@@ -8,7 +8,8 @@ and leak through any interface that passes them around.
 "Provider" is reserved for the task side (GitHub, Jira, Vikunja); this is the model side.
 
 Switching to a cheaper model backend means adding one module next to `claude_api.py`
-and changing `agent.backend` in config.
+and changing `agent.backend` in config. Two exist: `claude_api` (the Messages API with
+minion's own tools) and `opencode` (the OpenCode CLI with its tools, any provider).
 """
 
 from dataclasses import dataclass, field
@@ -59,18 +60,32 @@ class Agent(Protocol):
         prompt: str,
         max_rounds: int,
         label: str = "agent",
+        workdir: str | None = None,
     ) -> RunResult:
-        """Run a task to completion, returning its text and what it cost."""
+        """Run a task to completion, returning its text and what it cost.
+
+        `workdir` is where the task's files are: a backend whose tools run in a
+        process of their own needs it, one with in-process tools may ignore it.
+        """
         ...
 
 
-def create_agent(config: Settings, tool_registry: ToolRegistry) -> Agent:
+def create_agent(config: Settings, tool_registry: ToolRegistry, definition=None) -> Agent:
     backend = config.agent.backend
 
     if backend == "claude_api":
+        if definition is not None:
+            # Skills, MCP and permissions are OpenCode-shaped; ignoring them silently
+            # would run a different agent than the one asked for.
+            raise ValueError("Agent definitions need the opencode backend")
         from minion.agents.claude_api import ClaudeApiAgent
 
         return ClaudeApiAgent(config, tool_registry)
+
+    if backend == "opencode":
+        from minion.agents.opencode import OpenCodeAgent
+
+        return OpenCodeAgent(config, definition)
 
     raise ValueError(
         f"Unknown agent backend: {backend!r}. "

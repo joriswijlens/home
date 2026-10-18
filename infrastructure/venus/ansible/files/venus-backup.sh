@@ -21,12 +21,31 @@ log() {
 
 log "Starting Venus AI node incremental backup"
 
+# Snapshot the minion event log. JetStream's live files under nats/data can be
+# mid-write, so they are excluded from the sync below and this snapshot is what
+# gets backed up. Restore: nats backup restore stream <snapshot dir>
+NATS_SNAPSHOT="$BACKUP_DIRS/nats/backup/MINION_EVENTS"
+if nats --server nats://127.0.0.1:4222 stream info MINION_EVENTS > /dev/null 2>&1; then
+    rm -rf "$NATS_SNAPSHOT"
+    mkdir -p "$(dirname "$NATS_SNAPSHOT")"
+    if nats --server nats://127.0.0.1:4222 backup stream MINION_EVENTS "$NATS_SNAPSHOT" \
+        2>&1 | tee -a "$LOG_FILE"; then
+        log "Snapshotted MINION_EVENTS"
+    else
+        log "ERROR: Snapshot of MINION_EVENTS failed — not syncing a stale one"
+        exit 1
+    fi
+else
+    log "No MINION_EVENTS stream yet — nothing to snapshot"
+fi
+
 # Sync volumes directory to remote storage
 if [ -d "$BACKUP_DIRS" ]; then
     log "Syncing $BACKUP_DIRS to $REMOTE/opt/smartworkx/volumes"
 
     # Use rclone sync to mirror the directory (only transfer changes)
     rclone sync "$BACKUP_DIRS" "$REMOTE/opt/smartworkx/volumes" \
+        --exclude "nats/data/**" \
         --progress \
         --transfers 4 \
         --checkers 8 \

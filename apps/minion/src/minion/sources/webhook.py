@@ -51,8 +51,9 @@ from minion.store import EventStore
 
 logger = logging.getLogger(__name__)
 
-# A mapper turns a received payload into an event, or None to ignore it.
-Mapper = Callable[[dict], Event | None]
+# A mapper turns a received payload into events, or None to ignore it. A sender that
+# batches (Grafana groups alerts) yields several from one POST.
+Mapper = Callable[[dict], Event | list[Event] | None]
 
 # A trigger is a small JSON document. Anything larger is refused unread, so a big POST
 # cannot exhaust memory on a 1GB Pi.
@@ -174,17 +175,23 @@ class WebhookSource(EventSource):
             except Exception:
                 return JSONResponse({"error": "expected JSON"}, status_code=400)
 
-            event = self._mapper(payload)
-            if event is None:
+            mapped = self._mapper(payload)
+            events = mapped if isinstance(mapped, list) else [mapped] if mapped else []
+            if not events:
                 logger.info("%s webhook ignored a payload", self.name)
                 return JSONResponse({"accepted": False}, status_code=202)
 
-            # Record that the request arrived: for a source with no external system
-            # behind it, this is the only trace that anything was ever asked for.
-            task_id = event.payload.get("task_id", f"{self.name}-{event.timestamp}")
-            self._store.append(task_id, "trigger_received", {"source": self.name})
-
-            self._spawn(dispatcher.dispatch(event))
+            for event in events:
+                # The mapped fact itself is the record — and the trigger: whichever
+                # worker owns its type picks it up from the log. For a source with no
+                # external system behind it, it is the only trace of the request.
+                task_id = event.payload.get(
+                    "task_id", f"{self.name}-{int(event.timestamp.timestamp())}"
+                )
+                await self._store.append(
+                    task_id, event.type, {**event.payload, "source": self.name}
+                )
+                self._spawn(dispatcher.dispatch(event))
             return JSONResponse({"accepted": True}, status_code=202)
 
     def _spawn(self, coro) -> None:

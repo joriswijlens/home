@@ -22,6 +22,31 @@
         - data
         - workspace
 
+    - name: Ensure NATS JetStream store directory exists
+      file:
+        path: /opt/smartworkx/volumes/nats/data
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+
+    # The nats CLI takes a consistent snapshot of the event log for the backup;
+    # copying JetStream's live files is not a backup.
+    - name: Ensure unzip is installed
+      apt:
+        name: unzip
+        state: present
+
+    - name: Install nats CLI
+      unarchive:
+        src: "https://github.com/nats-io/natscli/releases/download/v{{ nats_cli_version }}/nats-{{ nats_cli_version }}-linux-arm64.zip"
+        dest: /usr/local/bin
+        remote_src: true
+        extra_opts: ["-j", "nats-{{ nats_cli_version }}-linux-arm64/nats"]
+        creates: /usr/local/bin/nats
+      vars:
+        nats_cli_version: "0.5.0"
+
     # Scaleway backup configuration
     - name: Ensure rclone is installed
       apt:

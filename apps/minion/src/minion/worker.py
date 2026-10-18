@@ -10,16 +10,17 @@ loudly: one run at a time, a hard timeout, and a spend ceiling checked before st
 ## Trigger
 
 A provider only ever observes and records — `GitHubProvider.poll` appends `labeled`
-once, and stops. The worker is a subscriber to the event store, not to the provider,
-and — like every subscriber — receives every fact the store ever appends: claims,
-failures, budget hits, whatever a future flow adds. `on_event` picks out `labeled` and
-ignores the rest, exactly as `log_events` receives the same stream and logs all of it.
+once, and stops. The worker consumes the event store as a durable subscriber
+(`store.consume("worker", ...)`), not the provider: it reacts to `labeled` and
+independently folds the log through `should_pick_up` to decide whether this is
+actually worth running (budget, staleness, attempts already used). That split matters
+for retries — `labeled` fires once per observation, but a task can be legitimately
+re-run after a failure, and that decision belongs to the worker's state, never to how
+many times an event happened to fire.
 
-Once picked out, the worker independently folds the log through `should_pick_up` to
-decide whether this is actually worth running (budget, staleness, attempts already
-used). That split matters for retries — `labeled` fires once per observation, but a
-task can be legitimately re-run after a failure, and that decision belongs to the
-worker's state, never to how many times an event happened to fire.
+Being durable matters here specifically: JetStream remembers this consumer's position,
+so a `labeled` fact appended while the worker was down is still delivered on restart —
+`log_events` (Loki) stays ephemeral, since losing a line there is fine.
 """
 
 import asyncio
@@ -58,15 +59,15 @@ class Worker:
         # Held so a background run cannot be garbage-collected mid-flight.
         self._background: set[asyncio.Task] = set()
 
-    def on_event(self, event: dict) -> None:
-        """The event store subscriber. Receives every fact, not just `labeled` — the
-        log carries claims, failures, budget hits, and whatever future flows append,
-        so filtering is this method's job, same as `log_events` receives everything
-        and simply logs it all.
+    async def start(self) -> asyncio.Task:
+        """Register as a durable consumer. Call once, after construction."""
+        return await self._store.consume("worker", self._on_event)
 
-        Synchronous, and must never block: it fires inline with `append()`, on the
-        caller's stack, so a run (minutes) held here would stall every other append —
-        including the one after it and Loki's logger.
+    def _on_event(self, event: dict) -> None:
+        """Filters the full fact stream for `labeled` — every other type is a no-op.
+
+        Synchronous on purpose: it only schedules. Awaiting the run here would hold
+        the consumer loop for its entire duration, delaying every fact behind it.
         """
         if event["type"] != LABELED:
             return
@@ -77,6 +78,7 @@ class Worker:
             flow=payload["flow"],
             ref=payload["ref"],
             title=payload.get("title", ""),
+            payload=payload,
         )
         provider_name = payload["provider"]
 
@@ -88,7 +90,7 @@ class Worker:
         """Decide whether to act on an observation, then claim, run, report, record."""
         provider = self._providers[provider_name]
 
-        events = self._store.events_for(task.id)
+        events = await self._store.events_for(task.id)
         if not should_pick_up(
             events,
             max_attempts=self._tasks.max_attempts,
@@ -96,19 +98,20 @@ class Worker:
         ):
             return None
 
-        if self._over_budget():
-            self._store.append(
+        if await self._over_budget():
+            await self._store.append(
                 task.id, BUDGET_EXCEEDED, {"ref": task.ref, "flow": task.flow}
             )
             logger.warning("Daily token budget reached — not starting %s", task.id)
             return None
 
-        # The provider's claim is what stops a second worker, since the event log is
-        # local to this machine and invisible to the others.
+        # The provider's claim is what stops a second worker, since a durable
+        # consumer's position is local to this process — another instance's worker
+        # has its own.
         if not await provider.claim(task):
             return None
 
-        self._store.append(task.id, CLAIMED, {"ref": task.ref, "flow": task.flow})
+        await self._store.append(task.id, CLAIMED, {"ref": task.ref, "flow": task.flow})
 
         flow = self._flows[task.flow]
         async with self._slots:
@@ -121,7 +124,7 @@ class Worker:
         try:
             context = await provider.context(task)
             if context is None:
-                self._store.append(
+                await self._store.append(
                     task.id, FAILED, {"ref": task.ref, "reason": "no workable context"}
                 )
                 return None
@@ -131,7 +134,7 @@ class Worker:
             )
 
             await provider.report(task, COMPLETED, report)
-            self._store.append(
+            await self._store.append(
                 task.id, COMPLETED, {"ref": task.ref, "usage": run.usage()}
             )
             logger.info(
@@ -149,7 +152,7 @@ class Worker:
                 self._tasks.run_timeout_minutes,
                 task.id,
             )
-            self._store.append(
+            await self._store.append(
                 task.id,
                 TIMED_OUT,
                 {"ref": task.ref, "minutes": self._tasks.run_timeout_minutes},
@@ -159,19 +162,19 @@ class Worker:
 
         except Exception as exc:
             logger.exception("%s failed for %s", task.flow, task.id)
-            self._store.append(task.id, FAILED, {"ref": task.ref, "error": str(exc)})
+            await self._store.append(task.id, FAILED, {"ref": task.ref, "error": str(exc)})
             # Hand it back so a retry is possible — bounded by max_attempts, checked
             # by should_pick_up the next time this task is observed as labeled.
             await provider.release(task)
             raise
 
-    def _over_budget(self) -> bool:
+    async def _over_budget(self) -> bool:
         budget = self._tasks.daily_token_budget
         if not budget:
             return False
 
         since = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
-        return tokens_used(self._store.since(since)) >= budget
+        return tokens_used(await self._store.since(since)) >= budget
 
 
 async def reclaim_stale(
@@ -185,7 +188,7 @@ async def reclaim_stale(
     from minion.state import stale_claims
 
     stale = stale_claims(
-        store.last_events(),
+        await store.last_events(),
         stale_after=timedelta(minutes=tasks.claim_stale_minutes),
     )
 
@@ -204,7 +207,7 @@ async def reclaim_stale(
         )
         try:
             await provider.release(task)
-            store.append(event["task_id"], "released", {"reason": "stale claim"})
+            await store.append(event["task_id"], "released", {"reason": "stale claim"})
             reclaimed += 1
             logger.info("Reclaimed stale task %s", event["task_id"])
         except Exception:
