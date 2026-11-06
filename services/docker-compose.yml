@@ -22,7 +22,7 @@ services:
 
   zigbee2mqtt:
     container_name: zigbee2mqtt
-    image: koenkk/zigbee2mqtt:2.6.2
+    image: koenkk/zigbee2mqtt:2.14.3
     restart: unless-stopped
     devices:
       - /dev/serial/by-id/usb-SMLIGHT_SMLIGHT_SLZB-06_f2c016c707adef118d468a4ba8793231-if00-port0:/dev/ttyUSB0
