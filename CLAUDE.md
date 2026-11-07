@@ -82,7 +82,7 @@ ansible-playbook -i inventory.ini restore_remote_data.yml
 
 # Specific backup:
 ansible-playbook -i inventory.ini restore_remote_data.yml \
-  -e "backup_file=/opt/backups/smartworkx/smartworkx-backup-YYYYMMDDTHHMMSS.tgz"
+  -e "backup_file=/opt/smartworkx/backups/backup-YYYYMMDDTHHMMSS.tgz"
 ```
 
 ### Docker Service Management
@@ -128,7 +128,7 @@ All services use `network_mode: host` for direct network access. USB devices are
 
 ### Backup Strategy
 
-- **Location**: `/opt/backups/smartworkx/` on remote host
+- **Location**: `/opt/smartworkx/backups/` on remote host
 - **Retention**: Last 7 backups
 - **Contents**: All service data from `/opt/smartworkx/volumes/`
 

@@ -28,6 +28,7 @@ if [ -d "$BACKUP_DIRS" ]; then
     # Use rclone sync to mirror the directory (only transfer changes)
     rclone sync "$BACKUP_DIRS" "$REMOTE/opt/smartworkx/volumes" \
         --progress \
+        --exclude "/home-assistant/config/home-assistant_v2.db*" \
         --transfers 4 \
         --checkers 8 \
         --stats-one-line \

@@ -19,3 +19,17 @@
         path: "{{ volumes_dir }}"
         dest: "{{ backup_dir }}/backup-{{ ansible_date_time.iso8601_basic_short }}.tgz"
         format: gz
+
+    - name: Find existing backups
+      ansible.builtin.find:
+        paths: "{{ backup_dir }}"
+        patterns: "backup-*.tgz"
+      register: existing_backups
+
+    - name: Remove backups beyond the newest {{ backups_to_keep }}
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ (existing_backups.files | sort(attribute='mtime', reverse=true))[backups_to_keep:] }}"
+      loop_control:
+        label: "{{ item.path | basename }}"

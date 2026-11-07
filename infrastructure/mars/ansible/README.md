@@ -16,7 +16,7 @@ ansible-playbook -i inventory.ini copy-config.yml
 
 ### `backup_remote_data.yml`
 
-This playbook creates a compressed backup of the entire `volumes_dir` (`/opt/smartworkx`) on the `mars` host. It also manages old backups, keeping only the last 7 by default.
+This playbook creates a compressed backup of `/opt/smartworkx/volumes` in `/opt/smartworkx/backups` on the `mars` host. It also manages old backups, keeping only the last 7 by default.
 
 **Usage:**
 
@@ -26,7 +26,7 @@ ansible-playbook -i inventory.ini backup_remote_data.yml
 
 ### `restore_remote_data.yml`
 
-This playbook restores a backup of the `volumes_dir` on the `mars` host. It stops the Docker Compose services, removes the current `volumes_dir`, unarchives the specified backup file (or the latest one if not specified), and then restarts the Docker Compose services.
+This playbook restores a backup of `/opt/smartworkx/volumes` on the `mars` host. It stops the Docker Compose services, moves the current volumes aside to `volumes.pre-restore-<timestamp>`, unarchives the specified backup file (or the latest one if not specified), and then starts the services again.
 
 **Usage:**
 
@@ -36,10 +36,18 @@ To restore the latest backup:
 ansible-playbook -i inventory.ini restore_remote_data.yml
 ```
 
-To restore a specific backup (e.g., `smartworkx-backup-20251026T141300.tgz`):
+To restore a specific backup (e.g., `backup-20261101T203520.tgz`):
 
 ```bash
-ansible-playbook -i inventory.ini restore_remote_data.yml --extra-vars "backup_file=/opt/backups/smartworkx/smartworkx-backup-20251026T141300.tgz"
+ansible-playbook -i inventory.ini restore_remote_data.yml --extra-vars "backup_file=/opt/smartworkx/backups/backup-20261101T203520.tgz"
+```
+
+### Scaleway backup script
+
+`files/mars-backup.sh` runs every 6 hours. To deploy only a script change:
+
+```bash
+ansible-playbook -i inventory.ini setup-host-playbook.yml --tags backup-script
 ```
 
 ### `setup-ha-host-playbook.yml`
