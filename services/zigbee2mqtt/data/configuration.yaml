@@ -1,14 +1,16 @@
-homeassistant: true
-permit_join: true
+homeassistant:
+  enabled: true
 mqtt:
   base_topic: zigbee2mqtt
-  server: 'mqtt://localhost:1883'
+  server: mqtt://localhost:1883
 serial:
   port: /dev/ttyUSB0
   adapter: zstack
   baudrate: 115200
-  rtscts: false             # important for SLZB-06 (hardware flow control)
+  rtscts: false
 frontend:
+  enabled: true
   port: 8080
 devices: devices.yaml
 groups: groups.yaml
+version: 5
