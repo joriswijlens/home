@@ -19,6 +19,10 @@
         path: "{{ volumes_dir }}"
         dest: "{{ backup_dir }}/backup-{{ ansible_date_time.iso8601_basic_short }}.tgz"
         format: gz
+        # HA's own backups go offsite via Scaleway; the .db.* files are stale copies.
+        exclusion_patterns:
+          - "*/home-assistant/config/backups/*"
+          - "*/home-assistant/config/home-assistant_v2.db.*"
 
     - name: Find existing backups
       ansible.builtin.find:
