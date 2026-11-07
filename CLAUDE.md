@@ -62,7 +62,7 @@ Ansible reads `service.yml` to determine which directory to sync to remote `/opt
 
 ### Mars (Home Automation) Deployment
 
-**ALWAYS backup before deploying**:
+**Backup before risky changes** (upgrades, manual work on Mars) — not needed for config deploys; config is in git and data syncs to Scaleway every 6h:
 ```bash
 cd infrastructure/mars/ansible/
 ansible-playbook -i inventory.ini backup_remote_data.yml
