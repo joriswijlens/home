@@ -9,4 +9,3 @@ services/docker-compose.override.yml
 services/backups/
 volumes/
 backups/
-.mcp.json
