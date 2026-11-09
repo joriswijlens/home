@@ -1,0 +1,7 @@
+interface:
+  display_name: "DeyeCloud API Best Practices"
+  short_description: "DeyeCloud OpenAPI 调用优化最佳实践"
+  brand_color: "#135eea"
+  default_prompt: "Use $deye-monitoring-best-practices to audit my DeyeCloud OpenAPI integration and reduce unnecessary API calls."
+policy:
+  allow_implicit_invocation: true

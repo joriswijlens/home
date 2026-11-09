@@ -1,0 +1,7 @@
+interface:
+  display_name: "DeyeCloud OpenAPI Quick Start"
+  short_description: "DeyeCloud OpenAPI 接入全流程指引"
+  brand_color: "#135eea"
+  default_prompt: "Use $deye-openapi-quickstart to walk me through getting a DeyeCloud OpenAPI access token and making my first API call."
+policy:
+  allow_implicit_invocation: true
