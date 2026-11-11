@@ -1,0 +1,25 @@
+title: "Verwarming"
+views:
+  - title: Overzicht
+    type: sections
+    max_columns: 1
+    sections:
+      - type: grid
+        column_span: 1
+        cards:
+          - type: history-graph
+            title: Temperatuur per ruimte
+            hours_to_show: 24
+            grid_options:
+              columns: full
+            entities:
+              - entity: sensor.blackbird_p80_heat_pump_huidige_kamertemperatuur
+                name: Woonkamer
+              - entity: sensor.thermometer_kantoor_temperature
+                name: Kantoor
+              - entity: sensor.0xa4c138f6743ac9d9_temperature
+                name: Badkamer
+              - entity: sensor.thermometer_lars_temperature
+                name: Slaapkamer Lars
+              - entity: sensor.thermometer_luus_temperature
+                name: Slaapkamer Luus

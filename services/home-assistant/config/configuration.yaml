@@ -27,3 +27,8 @@ lovelace:
       title: "Laadpaal"
       icon: mdi:ev-station
       filename: dashboards/laadpaal.yaml
+    verwarming-dashboard:
+      mode: yaml
+      title: "Verwarming"
+      icon: mdi:thermometer
+      filename: dashboards/verwarming.yaml
