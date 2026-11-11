@@ -18,13 +18,12 @@
   mode: single
 
 - alias: Radiator ventilatoren uit
-  description: "Uit zodra CV-aanvoer minder dan 3 °C warmer is dan de kamer of de CV-pomp stopt"
+  description: "Uit zodra retourwater uit huis minder dan 3 °C warmer is dan de kamer (radiatoren afgekoeld)"
   triggers:
     - trigger: template
       value_template: >
-        {{ states('sensor.blackbird_p80_heat_pump_watertemperatuur_uit') | float(0)
-           - states('sensor.blackbird_p80_heat_pump_huidige_kamertemperatuur') | float(0) < 3
-           or states('sensor.blackbird_p80_heat_pump_central_heating_pump_flow') | float(0) == 0 }}
+        {{ states('sensor.blackbird_p80_heat_pump_watertemperatuur_huis_in') | float(0)
+           - states('sensor.blackbird_p80_heat_pump_huidige_kamertemperatuur') | float(0) < 3 }}
       for:
         minutes: 5
   actions:
