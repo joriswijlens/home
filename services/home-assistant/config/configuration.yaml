@@ -22,3 +22,8 @@ lovelace:
       title: "Weheat"
       icon: mdi:heat-pump-outline
       filename: dashboards/weheat.yaml
+    laadpaal-dashboard:
+      mode: yaml
+      title: "Laadpaal"
+      icon: mdi:ev-station
+      filename: dashboards/laadpaal.yaml

@@ -1,0 +1,41 @@
+title: "Laadpaal"
+views:
+  - title: Overzicht
+    type: sections
+    max_columns: 2
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: "Status"
+            heading_style: subtitle
+          - type: tile
+            entity: sensor.peblar_ev_charger_status
+            name: Status
+          - type: tile
+            entity: sensor.peblar_ev_charger_vermogen
+            name: Vermogen
+          - type: tile
+            entity: sensor.peblar_ev_charger_sessie_energie
+            name: Sessie
+          - type: tile
+            entity: sensor.peblar_ev_charger_levenslange_energie
+            name: Totaal geladen
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: "Bediening"
+            heading_style: subtitle
+          - type: tile
+            entity: switch.peblar_ev_charger_opladen
+            name: Opladen
+          - type: tile
+            entity: number.peblar_ev_charger_laadlimiet
+            name: Laadlimiet
+            features:
+              - type: numeric-input
+                style: slider
+          - type: tile
+            entity: select.peblar_ev_charger_slim_laden
+            name: Slim laden
