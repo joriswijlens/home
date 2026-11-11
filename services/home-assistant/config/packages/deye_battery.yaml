@@ -1,0 +1,53 @@
+# Deye home battery (SUN-15K-SG05LP3 + 2x SE-F16 Max-H) via the DeyeCloud OpenAPI.
+# Polls every 5 min (cloud data refreshes ~every 5 min anyway). The bearer token
+# (secret `deye_authorization`, "Bearer <token>") is valid for 60 days.
+rest:
+  - resource: "https://eu1-developer.deyecloud.com/v1.0/device/latest"
+    method: POST
+    headers:
+      Authorization: !secret deye_authorization
+      Content-Type: application/json
+    payload: '{"deviceList":["2608311746"]}'
+    scan_interval: 300
+    sensor:
+      - name: "Deye battery charged"
+        unique_id: deye_battery_charged_total
+        value_template: >-
+          {{ value_json.deviceDataList[0].dataList | selectattr('key', 'eq', 'TotalChargeEnergy')
+             | map(attribute='value') | first | float(none) }}
+        unit_of_measurement: "kWh"
+        device_class: energy
+        state_class: total_increasing
+      - name: "Deye battery discharged"
+        unique_id: deye_battery_discharged_total
+        value_template: >-
+          {{ value_json.deviceDataList[0].dataList | selectattr('key', 'eq', 'TotalDischargeEnergy')
+             | map(attribute='value') | first | float(none) }}
+        unit_of_measurement: "kWh"
+        device_class: energy
+        state_class: total_increasing
+      # Positive = discharging, negative = charging (same convention as HA's energy dashboard).
+      - name: "Deye battery power"
+        unique_id: deye_battery_power
+        value_template: >-
+          {{ value_json.deviceDataList[0].dataList | selectattr('key', 'eq', 'BatteryPower')
+             | map(attribute='value') | first | float(none) }}
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+      - name: "Deye battery SOC"
+        unique_id: deye_battery_soc
+        value_template: >-
+          {{ value_json.deviceDataList[0].dataList | selectattr('key', 'eq', 'SOC')
+             | map(attribute='value') | first | float(none) }}
+        unit_of_measurement: "%"
+        device_class: battery
+        state_class: measurement
+      - name: "Deye battery temperature"
+        unique_id: deye_battery_temperature
+        value_template: >-
+          {{ value_json.deviceDataList[0].dataList | selectattr('key', 'eq', 'Temperature- Battery')
+             | map(attribute='value') | first | float(none) }}
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
