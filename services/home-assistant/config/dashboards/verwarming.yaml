@@ -19,6 +19,8 @@ views:
                 name: Kantoor
               - entity: sensor.0xa4c138f6743ac9d9_temperature
                 name: Badkamer
+              - entity: sensor.thermometer_slaapkamer_temperature
+                name: Slaapkamer
               - entity: sensor.thermometer_lars_temperature
                 name: Slaapkamer Lars
               - entity: sensor.thermometer_luus_temperature
