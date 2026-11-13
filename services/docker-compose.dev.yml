@@ -22,3 +22,8 @@ services:
   signal-api:
     volumes:
       - ../volumes/signal-api/data:/home/.local/share/signal-cli
+  emhass:
+    volumes:
+      - ../volumes/emhass/config/config.json:/share/config.json
+      - ../volumes/emhass/config/secrets_emhass.yaml:/app/secrets_emhass.yaml
+      - ../volumes/emhass/data:/data

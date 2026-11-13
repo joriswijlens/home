@@ -1,0 +1,30 @@
+# EMHASS (http://localhost:5000) — day-ahead optimization for Deye battery, Weheat and Peblar.
+# Prices come from the Zonneplan forecast attribute; adjust the template if its format differs.
+rest_command:
+  emhass_dayahead_optim:
+    url: http://localhost:5000/action/dayahead-optim
+    method: POST
+    content_type: application/json
+    timeout: 120
+    payload: >-
+      {% set f = state_attr('sensor.zonneplan_current_electricity_tariff', 'forecast') or [] %}
+      {"load_cost_forecast": {{ f | map(attribute='electricity_price') | map('float', 0) | list | tojson }},
+       "prod_price_forecast": {{ f | map(attribute='electricity_price') | map('float', 0) | list | tojson }}}
+  emhass_publish_data:
+    url: http://localhost:5000/action/publish-data
+    method: POST
+    content_type: application/json
+    payload: "{}"
+
+template:
+  - sensor:
+      # House load excluding the controllable loads (heat pump, EV charger, battery).
+      - name: "House load no var loads"
+        unique_id: house_load_no_var_loads
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        state: >-
+          {{ (states('sensor.connect_energiemeter_elektriciteitsverbruik') | float(0) * 1000
+              - states('sensor.blackbird_p80_heat_pump_vermogen_in') | float(0)
+              - states('sensor.peblar_ev_charger_vermogen') | float(0)) | round(0) }}

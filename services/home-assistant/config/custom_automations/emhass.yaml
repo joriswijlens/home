@@ -1,0 +1,38 @@
+- alias: EMHASS plan elke 30 minuten
+  description: Day-ahead optimalisatie draaien en resultaat publiceren
+  triggers:
+    - trigger: time_pattern
+      minutes: "/30"
+  actions:
+    - action: rest_command.emhass_dayahead_optim
+    - action: rest_command.emhass_publish_data
+  mode: single
+
+- alias: EMHASS laadpaal aan/uit
+  description: Peblar laden volgens EMHASS plan (deferrable load 1)
+  triggers:
+    - trigger: state
+      entity_id: sensor.p_deferrable1
+  conditions:
+    - condition: not
+      conditions:
+        - condition: state
+          entity_id: sensor.peblar_ev_charger_status
+          state:
+            - unavailable
+            - unknown
+  actions:
+    - choose:
+        - conditions:
+            - condition: numeric_state
+              entity_id: sensor.p_deferrable1
+              above: 100
+          sequence:
+            - action: switch.turn_on
+              target:
+                entity_id: switch.peblar_ev_charger_opladen
+      default:
+        - action: switch.turn_off
+          target:
+            entity_id: switch.peblar_ev_charger_opladen
+  mode: single
