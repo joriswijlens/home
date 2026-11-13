@@ -1,0 +1,64 @@
+# Deye inverter, local read-only via the data logger's Modbus TCP (port 8899, unit 1).
+# Register numbers checked against live values (SOC, voltage, power); no writes here.
+# Keep one client only: the logger handles very few simultaneous connections.
+modbus:
+  - name: deye
+    type: tcp
+    host: 192.168.2.54
+    port: 8899
+    delay: 2
+    timeout: 5
+    message_wait_milliseconds: 50
+    sensors:
+      - name: "Deye local battery SOC"
+        unique_id: deye_local_battery_soc
+        slave: 1
+        address: 588
+        data_type: uint16
+        unit_of_measurement: "%"
+        device_class: battery
+        state_class: measurement
+        scan_interval: 30
+      # Positive = discharging, negative = charging (same as the cloud sensor).
+      - name: "Deye local battery power"
+        unique_id: deye_local_battery_power
+        slave: 1
+        address: 590
+        data_type: int16
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        scan_interval: 30
+      - name: "Deye local battery voltage"
+        unique_id: deye_local_battery_voltage
+        slave: 1
+        address: 587
+        data_type: uint16
+        scale: 0.1
+        precision: 1
+        unit_of_measurement: "V"
+        device_class: voltage
+        state_class: measurement
+        scan_interval: 30
+      - name: "Deye local battery temperature"
+        unique_id: deye_local_battery_temperature
+        slave: 1
+        address: 586
+        data_type: uint16
+        scale: 0.1
+        offset: -100
+        precision: 1
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+        scan_interval: 60
+      # Positive = import from grid. Verify the sign against the Slimmelezer.
+      - name: "Deye local grid power"
+        unique_id: deye_local_grid_power
+        slave: 1
+        address: 625
+        data_type: int16
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        scan_interval: 30
