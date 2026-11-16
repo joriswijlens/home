@@ -26,6 +26,15 @@ rest_command:
 
 template:
   - sensor:
+      # The Envoy reports kW; EMHASS and the load calculation want W.
+      - name: "Solar power W"
+        unique_id: solar_power_w
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        availability: "{{ states('sensor.envoy_122221060206_current_power_production') | is_number }}"
+        state: "{{ (states('sensor.envoy_122221060206_current_power_production') | float(0) * 1000) | round(0) }}"
+
       # House load excluding the controllable loads (heat pump, EV charger).
       # grid import - export + solar + battery discharge (positive = discharging) = total house load.
       - name: "House load no var loads"
@@ -33,10 +42,21 @@ template:
         unit_of_measurement: "W"
         device_class: power
         state_class: measurement
+        # Only valid when all inputs are numeric, and only within a sane range; otherwise
+        # unavailable, so EMHASS never learns from garbage.
+        availability: >-
+          {% set v = (states('sensor.connect_energiemeter_elektriciteitsverbruik') | float(none),
+                      states('sensor.connect_energiemeter_elektriciteitsproductie') | float(none),
+                      states('sensor.solar_power_w') | float(none),
+                      states('sensor.deye_local_battery_power') | float(none),
+                      states('sensor.blackbird_p80_heat_pump_vermogen_in') | float(none),
+                      states('sensor.peblar_ev_charger_vermogen') | float(none)) %}
+          {% set total = v[0] - v[1] + v[2] + v[3] - v[4] - v[5] if none not in v else none %}
+          {{ total is not none and 0 <= total <= 30000 }}
         state: >-
           {{ (states('sensor.connect_energiemeter_elektriciteitsverbruik') | float(0)
               - states('sensor.connect_energiemeter_elektriciteitsproductie') | float(0)
-              + states('sensor.envoy_122221060206_current_power_production') | float(0)
+              + states('sensor.solar_power_w') | float(0)
               + states('sensor.deye_local_battery_power') | float(0)
               - states('sensor.blackbird_p80_heat_pump_vermogen_in') | float(0)
               - states('sensor.peblar_ev_charger_vermogen') | float(0)) | round(0) }}

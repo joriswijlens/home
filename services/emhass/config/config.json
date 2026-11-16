@@ -8,7 +8,7 @@
   "Latitude": 51.876,
   "Longitude": 5.943,
   "Altitude": 12,
-  "sensor_power_photovoltaics": "sensor.envoy_122221060206_current_power_production",
+  "sensor_power_photovoltaics": "sensor.solar_power_w",
   "sensor_power_load_no_var_loads": "sensor.house_load_no_var_loads",
   "load_forecast_method": "typical",
   "weather_forecast_method": "open-meteo",
