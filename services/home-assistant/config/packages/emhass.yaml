@@ -1,5 +1,5 @@
 # EMHASS (http://localhost:5000) — day-ahead optimization for Deye battery, Weheat and Peblar.
-# Prices come from the Zonneplan forecast attribute; adjust the template if its format differs.
+# Zonneplan forecast prices are integers in 1e-7 EUR/kWh, hourly; EMHASS runs with a 60 min step.
 rest_command:
   emhass_dayahead_optim:
     url: http://localhost:5000/action/dayahead-optim
@@ -7,9 +7,17 @@ rest_command:
     content_type: application/json
     timeout: 120
     payload: >-
-      {% set f = state_attr('sensor.zonneplan_current_electricity_tariff', 'forecast') or [] %}
-      {"load_cost_forecast": {{ f | map(attribute='electricity_price') | map('float', 0) | list | tojson }},
-       "prod_price_forecast": {{ f | map(attribute='electricity_price') | map('float', 0) | list | tojson }}}
+      {% set h = now().replace(minute=0, second=0, microsecond=0) %}
+      {% set ns = namespace(p=[]) %}
+      {% for e in state_attr('sensor.zonneplan_current_electricity_tariff', 'forecast') or [] %}
+      {% if as_datetime(e.datetime) >= h and ns.p | length < 24 %}
+      {% set ns.p = ns.p + [(e.electricity_price | float(0) / 10000000) | round(4)] %}
+      {% endif %}
+      {% endfor %}
+      {"load_cost_forecast": {{ ns.p | tojson }},
+       "prod_price_forecast": {{ ns.p | tojson }},
+       "soc_init": {{ (states('sensor.deye_local_battery_soc') | float(50) / 100) | round(2) }},
+       "soc_final": 0.2}
   emhass_publish_data:
     url: http://localhost:5000/action/publish-data
     method: POST
@@ -18,13 +26,17 @@ rest_command:
 
 template:
   - sensor:
-      # House load excluding the controllable loads (heat pump, EV charger, battery).
+      # House load excluding the controllable loads (heat pump, EV charger).
+      # grid import - export + solar + battery discharge (positive = discharging) = total house load.
       - name: "House load no var loads"
         unique_id: house_load_no_var_loads
         unit_of_measurement: "W"
         device_class: power
         state_class: measurement
         state: >-
-          {{ (states('sensor.connect_energiemeter_elektriciteitsverbruik') | float(0) * 1000
+          {{ (states('sensor.connect_energiemeter_elektriciteitsverbruik') | float(0)
+              - states('sensor.connect_energiemeter_elektriciteitsproductie') | float(0)
+              + states('sensor.envoy_122221060206_current_power_production') | float(0)
+              + states('sensor.deye_local_battery_power') | float(0)
               - states('sensor.blackbird_p80_heat_pump_vermogen_in') | float(0)
               - states('sensor.peblar_ev_charger_vermogen') | float(0)) | round(0) }}

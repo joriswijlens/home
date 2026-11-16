@@ -1,0 +1,42 @@
+# Manual living-room thermostat: Signal advice for the cheapest daytime window of tomorrow.
+# Prices come from the Zonneplan forecast (integers, 1e-7 EUR/kWh, hourly).
+notify:
+  - name: signal_emhass
+    platform: signal_messenger
+    url: "http://localhost:8081"
+    number: !secret signal_sender_number
+    recipients:
+      - !secret signal_recipient_number
+
+input_number:
+  thermostat_normal:
+    name: Thermostaat normaal
+    min: 15
+    max: 23
+    step: 0.5
+    unit_of_measurement: "°C"
+    initial: 19.5
+  thermostat_boost:
+    name: Thermostaat voorverwarmen
+    min: 15
+    max: 24
+    step: 0.5
+    unit_of_measurement: "°C"
+    initial: 21.5
+  thermostat_min_spread:
+    name: Minimaal prijsverschil
+    min: 0
+    max: 0.5
+    step: 0.01
+    unit_of_measurement: "€/kWh"
+    initial: 0.05
+
+input_datetime:
+  thermostat_window_start:
+    name: Voorverwarmen start
+    has_date: true
+    has_time: true
+  thermostat_window_end:
+    name: Voorverwarmen einde
+    has_date: true
+    has_time: true
