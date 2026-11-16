@@ -62,3 +62,13 @@ modbus:
         device_class: power
         state_class: measurement
         scan_interval: 30
+      # Total load on the inverter (registers 653/654), matches the DeyeCloud load.
+      - name: "Deye local load power"
+        unique_id: deye_local_load_power
+        slave: 1
+        address: 653
+        data_type: uint16
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        scan_interval: 30

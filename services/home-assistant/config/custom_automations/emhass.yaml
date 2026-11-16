@@ -9,6 +9,7 @@
   mode: single
 
 - alias: EMHASS laadpaal aan/uit
+  initial_state: false  # disabled until EMHASS plans are reviewed
   description: Peblar laden volgens EMHASS plan (deferrable load 1)
   triggers:
     - trigger: state
