@@ -34,8 +34,8 @@ modbus:
         slave: 1
         address: 587
         data_type: uint16
-        scale: 0.1
-        precision: 1
+        scale: 0.01
+        precision: 2
         unit_of_measurement: "V"
         device_class: voltage
         state_class: measurement
