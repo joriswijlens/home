@@ -1,8 +1,8 @@
-- alias: EMHASS plan elke 30 minuten
+- alias: EMHASS plan elke 15 minuten
   description: Day-ahead optimalisatie draaien en resultaat publiceren
   triggers:
     - trigger: time_pattern
-      minutes: "/30"
+      minutes: "/15"
     # Published EMHASS sensors are lost on a restart; republish right away.
     - trigger: homeassistant
       event: start
@@ -17,7 +17,7 @@
     - action: rest_command.emhass_dayahead_optim
     - action: rest_command.emhass_publish_data
     - delay: "00:00:05"
-    # Battery: map this hour's plan onto all six Deye TOU slots (registers 166-177).
+    # Battery: map this quarter's plan onto all six Deye TOU slots (registers 166-177).
     #   charge planned    -> target = planned SOC, grid charge on
     #   discharge planned -> target = 20 % reserve, grid charge off
     #   idle planned      -> target = current SOC (hold), grid charge off

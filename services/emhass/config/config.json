@@ -1,7 +1,7 @@
 {
   "costfun": "profit",
   "logging_level": "INFO",
-  "optimization_time_step": 60,
+  "optimization_time_step": 15,
   "historic_days_to_retrieve": 9,
   "method_ts_round": "nearest",
   "time_zone": "Europe/Amsterdam",
