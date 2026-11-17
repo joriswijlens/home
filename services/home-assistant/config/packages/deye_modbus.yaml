@@ -88,3 +88,11 @@ modbus:
         address: 172
         data_type: uint16
         scan_interval: 60
+      # Written by the EMHASS automation while grid charging.
+      - name: "Deye grid charge current"
+        unique_id: deye_grid_charge_current
+        slave: 1
+        address: 128
+        data_type: uint16
+        unit_of_measurement: "A"
+        scan_interval: 60
