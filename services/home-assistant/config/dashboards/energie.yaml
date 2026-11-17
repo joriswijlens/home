@@ -15,6 +15,16 @@ views:
           - type: heading
             heading: "Netto Energiekosten"
             heading_style: subtitle
+          - type: tile
+            entity: sensor.energiekosten_vandaag
+            name: "Vandaag"
+            grid_options:
+              columns: 6
+          - type: tile
+            entity: sensor.energiekosten_deze_maand
+            name: "Deze maand"
+            grid_options:
+              columns: 6
           - type: custom:apexcharts-card
             header:
               title: "Kosten per uur (verbruik − teruglevering)"
