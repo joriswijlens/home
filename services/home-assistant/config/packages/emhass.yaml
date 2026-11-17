@@ -1,5 +1,6 @@
 # EMHASS (http://localhost:5000) — day-ahead optimization for Deye battery, Weheat and Peblar.
-# Zonneplan forecast prices are integers in 1e-7 EUR/kWh, hourly; EMHASS runs with a 60 min step.
+# Zonneplan quarter-hour prices are integers in 1e-7 EUR/kWh; EMHASS runs with a 15 min step
+# over 24 h (96 steps). Before the next day's prices are out (~13:00) the list is padded with the last price.
 rest_command:
   emhass_dayahead_optim:
     url: http://localhost:5000/action/dayahead-optim
@@ -7,13 +8,14 @@ rest_command:
     content_type: application/json
     timeout: 120
     payload: >-
-      {% set h = now().replace(minute=0, second=0, microsecond=0) %}
+      {% set q = now().replace(minute=(now().minute // 15) * 15, second=0, microsecond=0) %}
       {% set ns = namespace(p=[]) %}
-      {% for e in state_attr('sensor.zonneplan_current_electricity_tariff', 'forecast') or [] %}
-      {% if as_datetime(e.datetime) >= h and ns.p | length < 24 %}
-      {% set ns.p = ns.p + [(e.electricity_price | float(0) / 10000000) | round(4)] %}
+      {% for e in state_attr('sensor.zonneplan_current_quarter_hourly_electricity_tariff', 'forecast') or [] %}
+      {% if as_datetime(e.start_date) >= q and ns.p | length < 96 %}
+      {% set ns.p = ns.p + [(e.price_tax_included.amount | float(0) / 10000000) | round(4)] %}
       {% endif %}
       {% endfor %}
+      {% set ns.p = ns.p + [ns.p[-1] if ns.p else 0.3] * (96 - ns.p | length) %}
       {"load_cost_forecast": {{ ns.p | tojson }},
        "prod_price_forecast": {{ ns.p | tojson }},
        "soc_init": {{ (states('sensor.deye_local_battery_soc') | float(50) / 100) | round(2) }},

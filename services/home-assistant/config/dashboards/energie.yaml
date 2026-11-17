@@ -43,11 +43,13 @@ views:
             series:
               - entity: sensor.energiekosten_per_uur
                 name: "Netto kosten"
-                type: area
+                type: column
                 color: "#FF9800"
-                opacity: 0.3
-                stroke_width: 2
                 float_precision: 2
+                # The sensor is a rate in EUR/h, so the hourly average is the cost of that hour.
+                group_by:
+                  func: avg
+                  duration: 1h
           - type: heading
             heading: "Day-Ahead Tarieven"
             heading_style: subtitle
@@ -79,18 +81,18 @@ views:
               show: true
               color: "#FF4560"
             series:
-              - entity: sensor.zonneplan_current_electricity_tariff
+              - entity: sensor.zonneplan_current_quarter_hourly_electricity_tariff
                 name: "Tarief"
                 type: area
+                curve: stepline
                 color: "#4CAF50"
                 opacity: 0.3
                 stroke_width: 2
-                float_precision: 2
+                float_precision: 3
                 data_generator: |
                   const forecast = entity.attributes.forecast || [];
-                  return forecast.map(f => {
-                    return [new Date(f.datetime).getTime(), Math.round(f.electricity_price / 100000) / 100];
-                  });
+                  return forecast.map(f =>
+                    [new Date(f.start_date).getTime(), f.price_tax_included.amount / 10000000]);
 
       - type: grid
         cards:
