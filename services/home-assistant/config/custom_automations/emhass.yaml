@@ -21,6 +21,8 @@
     #   charge planned    -> target = planned SOC, grid charge on
     #   discharge planned -> target = 20 % reserve, grid charge off
     #   idle planned      -> target = current SOC (hold), grid charge off
+    # When charging, the grid-charge current (register 128) follows the planned power:
+    #   |p_batt| / battery voltage, 10-120 A. Otherwise the Deye charges at a fixed 120 A.
     # Limits live in EMHASS; 20-100 % here is only a sanity check. Only writes on change.
     - condition: state
       entity_id: input_boolean.emhass_battery_control
@@ -38,21 +40,44 @@
           {% else %}{% set t = states('sensor.deye_local_battery_soc') | float %}{% endif %}
           {{ [[t | round(0) | int, 20] | max, 100] | min }}
         grid_charge: "{{ 1 if p_batt < -100 else 0 }}"
-    - condition: template
-      value_template: >-
-        {{ states('sensor.deye_tou_target_soc') | int(-1) != target | int
-           or states('sensor.deye_tou_grid_charge') | int(-1) != grid_charge | int }}
-    - action: modbus.write_register
-      data:
-        hub: deye
-        slave: 1
-        address: 166
-        value: "{{ [target | int] * 6 + [grid_charge | int] * 6 }}"
-    - action: system_log.write
-      data:
-        level: info
-        logger: emhass.battery
-        message: "Deye TOU set: target {{ target }} %, grid charge {{ grid_charge }} (p_batt {{ p_batt }} W)"
+        charge_amps: >-
+          {% set v = states('sensor.deye_local_battery_voltage') | float(0) %}
+          {% set v = v if 40 < v < 60 else 51.2 %}
+          {{ [[((-p_batt) / v) | round(0, 'ceil') | int, 10] | max, 120] | min }}
+    - if:
+        - condition: template
+          value_template: >-
+            {{ grid_charge | int == 1
+               and states('sensor.deye_grid_charge_current') | int(-1) != charge_amps | int }}
+      then:
+        - action: modbus.write_register
+          data:
+            hub: deye
+            slave: 1
+            address: 128
+            value: "{{ [charge_amps | int] }}"
+        - action: system_log.write
+          data:
+            level: info
+            logger: emhass.battery
+            message: "Deye grid charge current set: {{ charge_amps }} A (p_batt {{ p_batt }} W)"
+    - if:
+        - condition: template
+          value_template: >-
+            {{ states('sensor.deye_tou_target_soc') | int(-1) != target | int
+               or states('sensor.deye_tou_grid_charge') | int(-1) != grid_charge | int }}
+      then:
+        - action: modbus.write_register
+          data:
+            hub: deye
+            slave: 1
+            address: 166
+            value: "{{ [target | int] * 6 + [grid_charge | int] * 6 }}"
+        - action: system_log.write
+          data:
+            level: info
+            logger: emhass.battery
+            message: "Deye TOU set: target {{ target }} %, grid charge {{ grid_charge }} (p_batt {{ p_batt }} W)"
   mode: single
 
 - alias: EMHASS laadpaal aan/uit
