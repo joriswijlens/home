@@ -43,11 +43,13 @@ views:
             series:
               - entity: sensor.energiekosten_per_uur
                 name: "Netto kosten"
-                type: area
+                type: column
                 color: "#FF9800"
-                opacity: 0.3
-                stroke_width: 2
                 float_precision: 2
+                # The sensor is a rate in EUR/h, so the hourly average is the cost of that hour.
+                group_by:
+                  func: avg
+                  duration: 1h
           - type: heading
             heading: "Day-Ahead Tarieven"
             heading_style: subtitle
