@@ -22,7 +22,7 @@
   "treat_deferrable_load_as_semi_cont": [false],
   "set_deferrable_load_single_constant": [false],
   "battery_discharge_power_max": 10000,
-  "battery_charge_power_max": 10000,
+  "battery_charge_power_max": 6000,
   "battery_discharge_efficiency": 0.95,
   "battery_charge_efficiency": 0.95,
   "battery_nominal_energy_capacity": 32000,
