@@ -47,6 +47,35 @@
           - "--exclude=.gitignore"
       loop: "{{ service_names }}"
 
+    - name: Read pinned custom integrations
+      delegate_to: localhost
+      run_once: true
+      become: false
+      set_fact:
+        custom_components: "{{ (lookup('file', playbook_dir + '/../../../services/home-assistant/custom_components.yml') | from_yaml).custom_components }}"
+
+    - name: Check out custom integrations at their pinned version
+      delegate_to: localhost
+      run_once: true
+      become: false
+      ansible.builtin.git:
+        repo: "{{ item.repo }}"
+        version: "{{ item.version }}"
+        dest: "{{ lookup('env', 'HOME') }}/.cache/smartworkx/custom_components/{{ item.name }}"
+        force: true
+      loop: "{{ custom_components }}"
+
+    - name: Install custom integrations into Home Assistant
+      ansible.posix.synchronize:
+        src: "{{ lookup('env', 'HOME') }}/.cache/smartworkx/custom_components/{{ item.name }}/custom_components/{{ item.name }}/"
+        dest: "{{ volumes_dir }}/home-assistant/config/custom_components/{{ item.name }}"
+        mode: push
+        delete: true
+        recursive: true
+        rsync_opts:
+          - "--exclude=__pycache__"
+      loop: "{{ custom_components }}"
+
     - name: Restart Docker Compose services
       delegate_to: localhost
       become: false

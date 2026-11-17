@@ -1,0 +1,6 @@
+# Custom integrations installed into config/custom_components by copy-config.yml.
+# version is a git tag (or commit) of the repo; bump it to deploy a new release.
+custom_components:
+  - name: weheat_control
+    repo: https://github.com/joriswijlens/ha-weheat-control.git
+    version: v0.1.0
