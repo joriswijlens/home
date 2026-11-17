@@ -1,0 +1,146 @@
+- alias: EMHASS plan elke 30 minuten
+  description: Day-ahead optimalisatie draaien en resultaat publiceren
+  triggers:
+    - trigger: time_pattern
+      minutes: "/30"
+    # Published EMHASS sensors are lost on a restart; republish right away.
+    - trigger: homeassistant
+      event: start
+      id: start
+  actions:
+    # Give EMHASS and the Modbus sensors time to come up after a restart.
+    - if:
+        - condition: trigger
+          id: start
+      then:
+        - delay: "00:01:00"
+    - action: rest_command.emhass_dayahead_optim
+    - action: rest_command.emhass_publish_data
+    - delay: "00:00:05"
+    # Battery: map this hour's plan onto all six Deye TOU slots (registers 166-177).
+    #   charge planned    -> target = planned SOC, grid charge on
+    #   discharge planned -> target = 20 % reserve, grid charge off
+    #   idle planned      -> target = current SOC (hold), grid charge off
+    # Limits live in EMHASS; 20-100 % here is only a sanity check. Only writes on change.
+    - condition: state
+      entity_id: input_boolean.emhass_battery_control
+      state: "on"
+    - condition: template
+      value_template: >-
+        {{ states('sensor.p_batt_forecast') | is_number
+           and states('sensor.soc_batt_forecast') | is_number
+           and states('sensor.deye_local_battery_soc') | is_number }}
+    - variables:
+        p_batt: "{{ states('sensor.p_batt_forecast') | float }}"
+        target: >-
+          {% if p_batt < -100 %}{% set t = states('sensor.soc_batt_forecast') | float %}
+          {% elif p_batt > 100 %}{% set t = 20 %}
+          {% else %}{% set t = states('sensor.deye_local_battery_soc') | float %}{% endif %}
+          {{ [[t | round(0) | int, 20] | max, 100] | min }}
+        grid_charge: "{{ 1 if p_batt < -100 else 0 }}"
+    - condition: template
+      value_template: >-
+        {{ states('sensor.deye_tou_target_soc') | int(-1) != target | int
+           or states('sensor.deye_tou_grid_charge') | int(-1) != grid_charge | int }}
+    - action: modbus.write_register
+      data:
+        hub: deye
+        slave: 1
+        address: 166
+        value: "{{ [target | int] * 6 + [grid_charge | int] * 6 }}"
+    - action: system_log.write
+      data:
+        level: info
+        logger: emhass.battery
+        message: "Deye TOU set: target {{ target }} %, grid charge {{ grid_charge }} (p_batt {{ p_batt }} W)"
+  mode: single
+
+- alias: EMHASS laadpaal aan/uit
+  initial_state: false  # disabled until EMHASS plans are reviewed
+  description: Peblar laden volgens EMHASS plan (deferrable load 1)
+  triggers:
+    - trigger: state
+      entity_id: sensor.p_deferrable1
+  conditions:
+    - condition: not
+      conditions:
+        - condition: state
+          entity_id: sensor.peblar_ev_charger_status
+          state:
+            - unavailable
+            - unknown
+  actions:
+    - choose:
+        - conditions:
+            - condition: numeric_state
+              entity_id: sensor.p_deferrable1
+              above: 100
+          sequence:
+            - action: switch.turn_on
+              target:
+                entity_id: switch.peblar_ev_charger_opladen
+      default:
+        - action: switch.turn_off
+          target:
+            entity_id: switch.peblar_ev_charger_opladen
+  mode: single
+
+# Hot water: Weheat DHW target from a time schedule plus the EMHASS block (deferrable load 0).
+#   EMHASS block planned       -> block temp (high block temp when price spread >= ratio)
+#   evening window (bath)      -> evening temp
+#   otherwise (day and night)  -> base temp
+# Switch off -> evening temp all day (the old fixed 50 °C behaviour).
+- alias: EMHASS warm water doeltemperatuur
+  description: Weheat warm water doel volgens schema en EMHASS plan (deferrable load 0)
+  triggers:
+    - trigger: state
+      entity_id:
+        - sensor.p_deferrable0
+        - input_boolean.emhass_dhw_control
+        - input_number.dhw_base_temperature
+        - input_number.dhw_evening_temperature
+        - input_number.dhw_block_temperature
+        - input_number.dhw_block_high_temperature
+    - trigger: time
+      at:
+        - input_datetime.dhw_evening_start
+        - input_datetime.dhw_evening_end
+    - trigger: time_pattern
+      minutes: "/15"
+    - trigger: homeassistant
+      event: start
+  conditions:
+    - condition: template
+      value_template: "{{ states('number.weheat_heat_pump_hot_water_target_temperature') | is_number }}"
+  actions:
+    - variables:
+        evening: >-
+          {% set t = now().strftime('%H:%M:%S') %}
+          {{ states('input_datetime.dhw_evening_start') <= t < states('input_datetime.dhw_evening_end') }}
+        want: >-
+          {% if is_state('input_boolean.emhass_dhw_control', 'off') %}
+            {{ states('input_number.dhw_evening_temperature') | int }}
+          {% elif states('sensor.p_deferrable0') | float(0) > 100 %}
+            {% if states('sensor.electricity_price_spread_ratio') | float(0) >= states('input_number.dhw_high_spread_ratio') | float(9) %}
+              {{ states('input_number.dhw_block_high_temperature') | int }}
+            {% else %}
+              {{ states('input_number.dhw_block_temperature') | int }}
+            {% endif %}
+          {% elif evening %}
+            {{ states('input_number.dhw_evening_temperature') | int }}
+          {% else %}
+            {{ states('input_number.dhw_base_temperature') | int }}
+          {% endif %}
+    - condition: template
+      value_template: "{{ states('number.weheat_heat_pump_hot_water_target_temperature') | int(0) != want | int }}"
+    - action: number.set_value
+      target:
+        entity_id: number.weheat_heat_pump_hot_water_target_temperature
+      data:
+        value: "{{ want | int }}"
+    - action: system_log.write
+      data:
+        level: info
+        logger: emhass.dhw
+        message: "Weheat DHW target {{ want }} °C (block {{ states('sensor.p_deferrable0') }} W, spread {{ states('sensor.electricity_price_spread_ratio') }})"
+  mode: queued

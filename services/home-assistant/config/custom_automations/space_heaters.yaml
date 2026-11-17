@@ -1,0 +1,25 @@
+- alias: Kacheltje Luus terug naar basis
+  description: >-
+    Om 00:30, en na 3 uur hoger, het doel terugzetten naar een halve graad onder
+    de warmtepompthermostaat
+  triggers:
+    - trigger: time
+      at: "00:30:00"
+    - trigger: template
+      value_template: >-
+        {{ state_attr('climate.varin_r_smart_glass_panel_heater', 'temperature') | float(0)
+           > ((states('sensor.blackbird_p80_heat_pump_instelpunt_kamertemperatuur') | float(20.5)) - 0.5) | round(0, 'floor') }}
+      for: "03:00:00"
+  conditions:
+    - condition: state
+      entity_id: climate.varin_r_smart_glass_panel_heater
+      state: heat
+  actions:
+    # The heater only takes whole degrees, so round down.
+    - action: climate.set_temperature
+      target:
+        entity_id: climate.varin_r_smart_glass_panel_heater
+      data:
+        temperature: >-
+          {{ ((states('sensor.blackbird_p80_heat_pump_instelpunt_kamertemperatuur') | float(20.5)) - 0.5) | round(0, 'floor') }}
+  mode: single
