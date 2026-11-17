@@ -3,7 +3,17 @@
   triggers:
     - trigger: time_pattern
       minutes: "/30"
+    # Published EMHASS sensors are lost on a restart; republish right away.
+    - trigger: homeassistant
+      event: start
+      id: start
   actions:
+    # Give EMHASS and the Modbus sensors time to come up after a restart.
+    - if:
+        - condition: trigger
+          id: start
+      then:
+        - delay: "00:01:00"
     - action: rest_command.emhass_dayahead_optim
     - action: rest_command.emhass_publish_data
     - delay: "00:00:05"
