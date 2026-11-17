@@ -1,0 +1,21 @@
+# Total net energy cost: integrate "Energiekosten per uur" (EUR/h) to EUR, then per day and month.
+sensor:
+  - platform: integration
+    source: sensor.energiekosten_per_uur
+    name: "Energiekosten totaal"
+    unique_id: energiekosten_totaal
+    unit_time: h
+    method: left
+    round: 2
+
+utility_meter:
+  energiekosten_vandaag:
+    name: "Energiekosten vandaag"
+    unique_id: energiekosten_vandaag
+    source: sensor.energiekosten_totaal
+    cycle: daily
+  energiekosten_deze_maand:
+    name: "Energiekosten deze maand"
+    unique_id: energiekosten_deze_maand
+    source: sensor.energiekosten_totaal
+    cycle: monthly

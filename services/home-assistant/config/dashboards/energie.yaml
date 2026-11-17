@@ -15,6 +15,16 @@ views:
           - type: heading
             heading: "Netto Energiekosten"
             heading_style: subtitle
+          - type: tile
+            entity: sensor.energiekosten_vandaag
+            name: "Vandaag"
+            grid_options:
+              columns: 6
+          - type: tile
+            entity: sensor.energiekosten_deze_maand
+            name: "Deze maand"
+            grid_options:
+              columns: 6
           - type: custom:apexcharts-card
             header:
               title: "Kosten per uur (verbruik − teruglevering)"
@@ -43,14 +53,13 @@ views:
             series:
               - entity: sensor.energiekosten_per_uur
                 name: "Netto kosten"
-                type: area
+                type: column
                 color: "#FF9800"
-                opacity: 0.3
-                stroke_width: 2
                 float_precision: 2
-
-      - type: grid
-        cards:
+                # The sensor is a rate in EUR/h, so the hourly average is the cost of that hour.
+                group_by:
+                  func: avg
+                  duration: 1h
           - type: heading
             heading: "Day-Ahead Tarieven"
             heading_style: subtitle
@@ -82,15 +91,219 @@ views:
               show: true
               color: "#FF4560"
             series:
-              - entity: sensor.zonneplan_current_electricity_tariff
+              - entity: sensor.zonneplan_current_quarter_hourly_electricity_tariff
                 name: "Tarief"
                 type: area
+                curve: stepline
                 color: "#4CAF50"
                 opacity: 0.3
                 stroke_width: 2
-                float_precision: 2
+                float_precision: 3
                 data_generator: |
                   const forecast = entity.attributes.forecast || [];
-                  return forecast.map(f => {
-                    return [new Date(f.datetime).getTime(), Math.round(f.electricity_price / 100000) / 100];
-                  });
+                  return forecast.map(f =>
+                    [new Date(f.start_date).getTime(), f.price_tax_included.amount / 10000000]);
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: "EMHASS batterij"
+            heading_style: subtitle
+          - type: custom:apexcharts-card
+            header:
+              title: "Batterij: gedaan (12 u) en plan (24 u)"
+              show: true
+            graph_span: 36h
+            span:
+              start: hour
+              offset: -12h
+            now:
+              show: true
+              color: "#FF4560"
+            apex_config:
+              chart:
+                height: 320
+              xaxis:
+                labels:
+                  format: "HH:mm"
+              legend:
+                position: top
+              tooltip:
+                shared: true
+                intersect: false
+                x:
+                  format: "dd MMM HH:mm"
+            # A shared tooltip needs every series on the same timestamps:
+            # put actual and plan on one 15-minute grid. Actual stops at now.
+            all_series_config:
+              stroke_width: 2
+              extend_to: now
+              show:
+                legend_value: false
+              group_by:
+                func: last
+                duration: 15min
+                fill: last
+            yaxis:
+              - id: soc
+                min: 0
+                max: 100
+                decimals: 0
+                apex_config:
+                  tickAmount: 4
+                  title:
+                    text: "SOC %"
+              - id: power
+                opposite: true
+                min: -6000
+                max: 6000
+                decimals: 0
+                apex_config:
+                  tickAmount: 4
+                  title:
+                    text: "W  (+ ontladen / − laden)"
+            series:
+              - entity: sensor.deye_local_battery_soc
+                name: "SOC"
+                yaxis_id: soc
+                color: "#2196F3"
+                stroke_width: 3
+              - entity: sensor.soc_batt_forecast
+                name: "SOC plan"
+                yaxis_id: soc
+                color: "#90CAF9"
+                stroke_dash: 5
+                extend_to: false
+                data_generator: |
+                  return (entity.attributes.battery_scheduled_soc || []).map(f =>
+                    [new Date(f.date).getTime(), parseFloat(f.soc_batt_forecast)]);
+              - entity: sensor.deye_tou_target_soc
+                name: "Doel-SOC Deye"
+                yaxis_id: soc
+                color: "#BA68C8"
+                curve: stepline
+                stroke_width: 1
+              - entity: sensor.deye_local_battery_power
+                name: "Vermogen"
+                yaxis_id: power
+                type: area
+                color: "#FF9800"
+                opacity: 0.25
+                stroke_width: 1
+                group_by:
+                  func: avg
+                  duration: 15min
+                  fill: last
+              - entity: sensor.p_batt_forecast
+                name: "Vermogen plan"
+                yaxis_id: power
+                curve: stepline
+                color: "#FFD54F"
+                stroke_dash: 5
+                extend_to: false
+                data_generator: |
+                  return (entity.attributes.battery_scheduled_power || []).map(f =>
+                    [new Date(f.date).getTime(), parseFloat(f.p_batt_forecast)]);
+          - type: entities
+            title: "EMHASS sturing"
+            entities:
+              - input_boolean.emhass_battery_control
+              - input_boolean.emhass_dhw_control
+              - sensor.electricity_price_spread_ratio
+              - input_number.dhw_base_temperature
+              - input_number.dhw_evening_temperature
+              - input_number.dhw_block_temperature
+              - input_number.dhw_block_high_temperature
+              - input_number.dhw_high_spread_ratio
+              - input_datetime.dhw_evening_start
+              - input_datetime.dhw_evening_end
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: "EMHASS warm water"
+            heading_style: subtitle
+          - type: custom:apexcharts-card
+            header:
+              title: "Warm water: gedaan (12 u) en plan (24 u)"
+              show: true
+            graph_span: 36h
+            span:
+              start: hour
+              offset: -12h
+            now:
+              show: true
+              color: "#FF4560"
+            apex_config:
+              chart:
+                height: 320
+              xaxis:
+                labels:
+                  format: "HH:mm"
+              legend:
+                position: top
+              tooltip:
+                shared: true
+                intersect: false
+                x:
+                  format: "dd MMM HH:mm"
+            all_series_config:
+              stroke_width: 2
+              extend_to: now
+              show:
+                legend_value: false
+              group_by:
+                func: last
+                duration: 15min
+                fill: last
+            yaxis:
+              - id: temp
+                min: 30
+                max: 70
+                decimals: 0
+                apex_config:
+                  tickAmount: 4
+                  title:
+                    text: "°C"
+              - id: power
+                opposite: true
+                min: 0
+                max: 4000
+                decimals: 0
+                apex_config:
+                  tickAmount: 4
+                  title:
+                    text: "W"
+            series:
+              - entity: sensor.blackbird_p80_heat_pump_sww_temperatuur_boventemperatuur
+                name: "Boiler boven"
+                yaxis_id: temp
+                color: "#F44336"
+                stroke_width: 3
+              - entity: number.weheat_heat_pump_hot_water_target_temperature
+                name: "Doeltemperatuur"
+                yaxis_id: temp
+                curve: stepline
+                color: "#BA68C8"
+                stroke_width: 1
+              - entity: sensor.blackbird_p80_heat_pump_vermogen_in
+                name: "WP vermogen"
+                yaxis_id: power
+                type: area
+                color: "#FF9800"
+                opacity: 0.25
+                stroke_width: 1
+                group_by:
+                  func: avg
+                  duration: 15min
+                  fill: last
+              - entity: sensor.p_deferrable0
+                name: "Blok plan"
+                yaxis_id: power
+                curve: stepline
+                color: "#FFD54F"
+                stroke_dash: 5
+                extend_to: false
+                data_generator: |
+                  return (entity.attributes.deferrables_schedule || []).map(f =>
+                    [new Date(f.date).getTime(), parseFloat(f.p_deferrable0)]);

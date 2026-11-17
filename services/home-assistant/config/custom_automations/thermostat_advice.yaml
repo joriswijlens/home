@@ -1,0 +1,114 @@
+- alias: Thermostaat advies voor morgen
+  description: >-
+    Zodra de prijzen van morgen bekend zijn: kies het goedkoopste blok van 3 uur
+    (start 07-19 uur) en meld dat via Signal. 18:00 is een vangnet.
+  triggers:
+    - trigger: template
+      value_template: >-
+        {% set t0 = (now() + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0) %}
+        {% set t1 = t0 + timedelta(days=1) %}
+        {% set ns = namespace(n=0) %}
+        {% for e in state_attr('sensor.zonneplan_current_electricity_tariff', 'forecast') or [] %}
+          {% set d = as_datetime(e.datetime) | as_local %}
+          {% if d >= t0 and d < t1 %}{% set ns.n = ns.n + 1 %}{% endif %}
+        {% endfor %}
+        {{ ns.n >= 22 }}
+    - trigger: time
+      at: "18:00:00"
+  variables:
+    result: >-
+      {% set fc = state_attr('sensor.zonneplan_current_electricity_tariff', 'forecast') or [] %}
+      {% set t0 = (now() + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0) %}
+      {% set t1 = t0 + timedelta(days=1) %}
+      {% set ns = namespace(p=[], s=[], best=none, best_sum=999999.0) %}
+      {% for e in fc %}
+        {% set d = as_datetime(e.datetime) | as_local %}
+        {% if d >= t0 and d < t1 %}
+          {% set ns.p = ns.p + [e.electricity_price | float(0) / 10000000] %}
+          {% set ns.s = ns.s + [d] %}
+        {% endif %}
+      {% endfor %}
+      {% if ns.p | length >= 22 %}
+        {% for i in range(0, ns.p | length - 2) %}
+          {% if 7 <= ns.s[i].hour <= 19 %}
+            {% set tot = ns.p[i] + ns.p[i + 1] + ns.p[i + 2] %}
+            {% if tot < ns.best_sum %}{% set ns.best = i %}{% set ns.best_sum = tot %}{% endif %}
+          {% endif %}
+        {% endfor %}
+        {% set avg = (ns.p | sum) / (ns.p | length) %}
+        {% if ns.best is not none %}
+          {{ {'ok': true, 'start': ns.s[ns.best].isoformat(), 'end': (ns.s[ns.best] + timedelta(hours=3)).isoformat(),
+              'window_avg': (ns.best_sum / 3) | round(3), 'day_avg': avg | round(3)} | tojson }}
+        {% else %}{{ {'ok': false} | tojson }}{% endif %}
+      {% else %}{{ {'ok': false} | tojson }}{% endif %}
+    plan: "{{ result | from_json }}"
+  conditions:
+    # Not already planned for tomorrow (the 18:00 fallback must not message twice).
+    - condition: template
+      value_template: >-
+        {{ states('input_datetime.thermostat_window_start') in ['unknown', 'unavailable']
+           or as_datetime(states('input_datetime.thermostat_window_start')).date()
+              != (now() + timedelta(days=1)).date() }}
+    - condition: template
+      value_template: >-
+        {{ plan.ok and (plan.day_avg - plan.window_avg) >= states('input_number.thermostat_min_spread') | float(0.05) }}
+  actions:
+    - action: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.thermostat_window_start
+      data:
+        datetime: "{{ as_datetime(plan.start).strftime('%Y-%m-%d %H:%M:%S') }}"
+    - action: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.thermostat_window_end
+      data:
+        datetime: "{{ as_datetime(plan.end).strftime('%Y-%m-%d %H:%M:%S') }}"
+    - action: notify.signal_emhass
+      data:
+        message: >-
+          Morgen {{ as_datetime(plan.start).strftime('%H:%M') }}–{{ as_datetime(plan.end).strftime('%H:%M') }}
+          is stroom goedkoop ({{ (plan.window_avg * 100) | round(0) }} ct tegen gemiddeld
+          {{ (plan.day_avg * 100) | round(0) }} ct). Zet dan de thermostaat op
+          {{ states('input_number.thermostat_boost') }} °C; daarna terug naar
+          {{ states('input_number.thermostat_normal') }} °C.
+  mode: single
+
+- alias: Thermostaat start voorverwarmen
+  triggers:
+    - trigger: time
+      at: input_datetime.thermostat_window_start
+  actions:
+    - action: notify.signal_emhass
+      data:
+        message: "Nu goedkoop: zet de thermostaat op {{ states('input_number.thermostat_boost') }} °C."
+  mode: single
+
+- alias: Thermostaat einde voorverwarmen
+  triggers:
+    - trigger: time
+      at: input_datetime.thermostat_window_end
+  actions:
+    - action: notify.signal_emhass
+      data:
+        message: "Einde goedkoop venster: zet de thermostaat terug op {{ states('input_number.thermostat_normal') }} °C."
+  mode: single
+
+- alias: Thermostaat advies vanochtend
+  description: Herinnering 's ochtends als er vandaag een goedkoop venster is
+  triggers:
+    - trigger: time
+      at: "07:00:00"
+  conditions:
+    - condition: template
+      value_template: >-
+        {{ states('input_datetime.thermostat_window_start') not in ['unknown', 'unavailable']
+           and as_datetime(states('input_datetime.thermostat_window_start')).date() == now().date() }}
+  actions:
+    - action: notify.signal_emhass
+      data:
+        message: >-
+          Vandaag {{ as_datetime(states('input_datetime.thermostat_window_start')).strftime('%H:%M') }}–{{
+          as_datetime(states('input_datetime.thermostat_window_end')).strftime('%H:%M') }}
+          is stroom goedkoop. Ik meld het weer als het zover is: dan thermostaat op
+          {{ states('input_number.thermostat_boost') }} °C.
+  mode: single
