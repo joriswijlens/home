@@ -83,6 +83,20 @@ services:
       - home-assistant
     environment:
       - TZ=Europe/Amsterdam
+    # Upstream only retries Open-Meteo when no cache exists; always allow 3 attempts.
+    # Remainder is the image's original entrypoint.
+    entrypoint:
+      - /usr/bin/tini
+      - --
+      - /bin/bash
+      - -c
+      - |
+        sed -i 's/max_attempts = 1 if has_cache else open_meteo_max_attempts/max_attempts = open_meteo_max_attempts/' /app/src/emhass/forecast.py
+        grep -q '^ *max_attempts = open_meteo_max_attempts$$' /app/src/emhass/forecast.py || echo 'WARNING: Open-Meteo retry patch not applied'
+        set -e
+        [ -f /data/long_train_data.pkl ] || cp /app/data/long_train_data.pkl /data/
+        [ -f /data/opt_res_latest.csv ] || cp /app/data/opt_res_latest.csv /data/
+        exec uv run --frozen gunicorn emhass.web_server:app -c gunicorn.conf.py -k "$${WORKER_CLASS:-uvicorn.workers.UvicornWorker}"
     command: --addr 0.0.0.0 --port 5000
     volumes:
       - ${VOLUMES_DIR}/emhass/config/config.json:/share/config.json
